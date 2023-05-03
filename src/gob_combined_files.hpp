@@ -1,7 +1,7 @@
 // gob combined files 
 /*
 #  header
-#  uint32_t signeture "GCF0" gob combine file Version 0
+#  uint32_t signature "GCF0" gob combine file Version 0
 #  uint32_t file count
 #  uint32_t reserve[2]
 #
@@ -21,7 +21,7 @@ namespace gob
 
 struct CombinedFilesHeader
 {
-    uint32_t signeture{}; // "GCF0"
+    uint32_t signature{}; // "GCF0"
     uint32_t files{};
     uint32_t reserved0{};
     uint32_t reserved1{};
@@ -49,7 +49,7 @@ class CombinedFiles
             sz = _file.read(&_header, sizeof(_header));
             if(sz != sizeof(_header)) { close(); return false; }
         }
-        return (bool)_file && sz == sizeof(_header) && _header.signeture == 0x30464347;
+        return (bool)_file && sz == sizeof(_header) && _header.signature == 0x30464347; // "GCF0"
     }
     
     void close() { if(_file) { _file.close(); }}

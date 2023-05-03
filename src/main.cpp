@@ -1,5 +1,5 @@
 /*
-  M5Stack_JpgLoopAnimeSD
+  M5Stack_FlipBookSD
 
   Play combined jpg files and play wav on PSRAM.
   Enjoy as an alternative to video playback.
@@ -200,13 +200,13 @@ void setup()
 
     // SD-Updater
 #if defined(ENABLE_SD_UPDATER)
-    SDUCfg.setLabelMenu("< Menu");               // BtnA label: load menu.bin
-    SDUCfg.setLabelSkip("Launch");               // BtnB label: skip the lobby countdown and run the app
-    SDUCfg.setLabelSave("Save");                 // BtnC label: save the sketch to the SD
-    SDUCfg.setAppName("M5S_JpgAnimeSD");         // lobby screen label: application name
-    SDUCfg.setBinFileName("/M5S_JpgAnimeSD.bin"); // if file path to bin is set for this app, it will be checked at boot and created if not exist
+    //    SDUCfg.setLabelMenu("< Menu");               // BtnA label: load menu.bin
+    //    SDUCfg.setLabelSkip("Launch");               // BtnB label: skip the lobby countdown and run the app
+    //    SDUCfg.setLabelSave("Save");                 // BtnC label: save the sketch to the SD
+    SDUCfg.setAppName("M5S_FlipBookSDSD");         // lobby screen label: application name
+    SDUCfg.setBinFileName("/M5S_FlipBookSD.bin"); // if file path to bin is set for this app, it will be checked at boot and created if not exist
     auto SdFatSPIConfig = SdSpiConfig( TFCARD_CS_PIN, SHARED_SPI, SD_SCK_MHZ(25) );
-    checkSDUpdater(sd, String(MENU_BIN), 5000, &SdFatSPIConfig);
+    checkSDUpdater(sd, String(MENU_BIN), 2000, &SdFatSPIConfig);
 #endif
 
     // SdFat
@@ -261,7 +261,6 @@ static void loopRender();
 loop_function loop_f = loopMenu;
 
 // Menu
-// single, loop 1, loopall,
 static void loopMenu()
 {
     M5.update();

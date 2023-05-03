@@ -3,7 +3,7 @@
 #
 #
 #  header
-#  uint32_t signeture "GCF0" gob combine file Version 0
+#  uint32_t signature "GCF0" gob combine file Version 0
 #  uint32_t file count
 #  uint32_t reserve[2]
 #
@@ -23,14 +23,14 @@ import pprint as pp
 class GCF0(LittleEndianStructure):
     _pack_ = 2
     _fields_ = [
-        ('signeture', c_uint32),
+        ('signature', c_uint32),
         ('files', c_uint32),
         ('reserved0', c_uint32),
         ('reserved1', c_uint32),
     ]
 
     def __init__(self, files = 0):
-        self.signeture = 0x30464347 # GCF0
+        self.signature = 0x30464347 # GCF0
         self.files = files
         self.reserved0 = self.reserved1 = 0
 
