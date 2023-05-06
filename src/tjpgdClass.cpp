@@ -1029,14 +1029,14 @@ TJpgD::JRESULT TJpgD::decomp_multitask (
                 //mcubufs[mcuidx][1] = 0xFF;
                 rc = mcu_output(this, mcubufs[mcuidx], workbuf, outfunc, x, y);
             }
-        } while ((x += mx) < width);
-        if (rc != TJpgD::JDR_OK) break;
+        } while ((x += mx) < width && rc == TJpgD::JDR_OK);
+        if (rc != TJpgD::JDR_OK) { break; }
         if (linefunc && (yidx == lineskip || y == lasty)) {
             while (ql->queue) taskYIELD();
             while (xQueueReceive(param.sem, &qtmp, 0)) {
                 //qtmp->mcubuf[0] = 0xFF;
                 //qtmp->mcubuf[1] = 0xFF;
-                mcu_output(this, qtmp->mcubuf, workbuf, outfunc, qtmp->x, qtmp->y);
+                rc = mcu_output(this, qtmp->mcubuf, workbuf, outfunc, qtmp->x, qtmp->y);
                 qtmp->queue = false;
             }
             ql->h = (y == lasty) ? (yidx * my + height - y) : ((lineskip + 1) * my);

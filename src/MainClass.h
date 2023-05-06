@@ -1,3 +1,8 @@
+/*
+  MainClass.h
+  This is a modified version based on
+  https://github.com/lovyan03/M5Stack_JpgLoopAnime/blob/master/JpgLoopAnime/src/MainClass.h (Thanks Lovyan03-san)
+ */
 #ifndef _MAINCLASS_H_
 #define _MAINCLASS_H_
 
@@ -66,7 +71,11 @@ class MainClass
         //Serial.printf("j(%d,%d) o(%d,%d) j:[%d,%d] out[%d,%d]\n", _jpg_x, _jpg_y, _off_x, _off_y, _jdec.width, _jdec.height, _out_width, _out_height);
         
         jres = multi ? _jdec.decomp_multitask(_fp_jpgWrite, jpgWriteRow) :  _jdec.decomp(_fp_jpgWrite, jpgWriteRow);
-        if (jres != TJpgD::JDR_OK) {
+        if (jres > TJpgD::JDR_INTR)
+        {
+            // If the value is 1 (JDR_INTR),
+            // No problem because the process is stopped by myself.
+            // See also [*1]
             Serial.printf("decomp failed! %d\r\n", jres);
             return false;
         }
@@ -128,7 +137,7 @@ class MainClass
         if (rect->right < me->_off_x)      return 1;
         if (x >= (me->_off_x + outWidth))  return 1;
         if (rect->bottom < me->_off_y)     return 1;
-        if (y >= (me->_off_y + outHeight)) return 0;
+        if (y >= (me->_off_y + outHeight)) return 0; // No more rendering. [*1] => decomp failed 1 (Interrupted by output function.
 
         int32_t src_idx = 0;
         int32_t dst_idx = 0;
@@ -176,8 +185,8 @@ class MainClass
         if (rect->right < me->_off_x)      return 1;
         if (x >= (me->_off_x + outWidth))  return 1;
         if (rect->bottom < me->_off_y)     return 1;
-        if (y >= (me->_off_y + outHeight)) return 1;
-
+        if (y >= (me->_off_y + outHeight)) return 0; // No more rendering. [*1] => decomp failed 1 (Interrupted by output function.
+        
         if (me->_off_y > y) {
             uint_fast16_t linesToSkip = me->_off_y - y;
             src += linesToSkip * w * 3;
@@ -197,9 +206,9 @@ class MainClass
         do {
             int i = 0;
             do {
-                uint_fast16_t r8 = src[i*3+0] & 0xF8;
-                uint_fast16_t g8 = src[i*3+1];
-                uint_fast16_t b5 = src[i*3+2] >> 3;
+                uint_fast8_t r8 = src[i*3+0] & 0xF8;
+                uint_fast8_t g8 = src[i*3+1];
+                uint_fast8_t b5 = src[i*3+2] >> 3;
                 r8 |= g8 >> 5;
                 g8 &= 0x1C;
                 b5 = (g8 << 3) + b5;
@@ -216,12 +225,8 @@ class MainClass
         MainClass* me = (MainClass*)jdec->device;
         int_fast16_t oy = me->_off_y;
         int_fast16_t bottom = y + h;
-        
-        //Serial.printf("==> %3u:%u oy:%d h:%u\n", y, h, oy, me->_lcd_height);
 
-        if(bottom < oy) { return 1; }
-        if(y >= oy + me->_lcd_height) { return 0; } // Cutoff
-        
+        if(bottom < oy || y >= oy + me->_lcd_height) { return 1; }
         if(y == 0)
         {
             me->_lcd->setAddrWindow(me->_jpg_x, me->_jpg_y, me->_out_width, me->_out_height);
@@ -232,7 +237,6 @@ class MainClass
             if(oy > y && oy < bottom) { h -= oy % h; }
             if(oy + me->_lcd_height > y && oy + me->_lcd_height < y + h) { h -= (y + h) - (me->_lcd_height + oy); }
         }
-        //Serial.printf("H:%u\n", h);
         me->_lcd->pushPixelsDMA(reinterpret_cast<::lgfx::swap565_t*>(me->_dmabuf), me->_out_width * h);
 
         flip = !flip;

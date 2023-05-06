@@ -1,41 +1,39 @@
 /*
   M5Stack_FlipBookSD
 
-  Play combined jpg files and play wav on PSRAM.
-  Enjoy as an alternative to video playback.
-  
+  This application is similar to video playback by playing back images from SD like a flip book.
+  SD からパラパラ漫画のように画像を音声と再生することで、動画再生に近い事をするアプリケーションです。  
+
   Author: GOB https://twitter.com/gob_52_gob
 */
-#include <M5ModuleDisplay.h>
+#if defined(FBSD_ENABLE_DISPLAY_MODULE)
+# pragma message "[FBSD] Enable display module"
+# include <M5ModuleDisplay.h>
+#endif 
+
 #include <SdFat.h>
 #include <M5Unified.h>
 
-#if defined(ENABLE_SD_UPDATER)
-# define SDU_NO_AUTODETECT                // Disable SDUpdater autodetect: this prevents <SD.h> to be auto-selected, however it also disables board detection
-# define USE_SDFATFS                      // Tell M5StackUpdater to load <SdFat.h> and wrap SdFat32 into fs::FS::SdFat32FSImpl
-# define HAS_M5_API                       // Use M5 API (M5.BtnA, BtnB, BtnC...) for triggers
-# define SDU_USE_DISPLAY                  // Enable display (progress bar, lobby, buttons)
-# define HAS_LGFX                         // Use LGFX Family display driver with zoom, rotate
-# define SDU_Sprite LGFX_Sprite           // Inherit Sprite type from M5GFX
-# define SDU_DISPLAY_TYPE M5GFX*          // inherit display type from M5GFX
-# define SDU_DISPLAY_OBJ_PTR &M5.Display  // alias display pointer from M5Unified
-# define SDU_TouchButton LGFX_Button      // inherit Buttons types from M5Unified
-# if !defined SDU_HAS_TOUCH && defined ARDUINO_M5STACK_Core2
-  #define SDU_HAS_TOUCH
-# endif
+#if defined(FBSD_ENABLE_SD_UPDATER)
+# pragma message "[FBSD] Enable SD-Updater"
+# define SDU_NO_AUTODETECT
+# define USE_SDFATFS
+# define HAS_M5_API
+# define SDU_USE_DISPLAY
+# define HAS_LGFX
+# define SDU_Sprite LGFX_Sprite
+# define SDU_DISPLAY_TYPE M5GFX*
+# define SDU_DISPLAY_OBJ_PTR &M5.Display
+//# define SDU_TouchButton LGFX_Button
 # include <M5StackUpdater.h>
 #endif
 
-#include <utility/Speaker_Class.hpp>
 #include <esp_system.h>
 #include <esp_bt.h>
 #include <esp_bt_main.h>
 #include <esp_idf_version.h>
 
-// Define if you want to measure processing speed.
-//#define ENABLE_PROFILE
 #include "scoped_profiler.hpp"
-
 #include "MainClass.h"
 #include "gob_combined_files.hpp"
 #include "file_list.hpp"
@@ -50,6 +48,9 @@
 # define JPG_BUFFER_SIZE (1024*10)
 #endif
 
+// Display only the specified frame (For debug)
+//#define FIXED_FRAME (1023)
+
 namespace
 {
 using UpdateDuration = std::chrono::duration<float, std::ratio<1, BASE_FPS> >;
@@ -57,6 +58,7 @@ UpdateDuration durationTime{1}; // 1 == (1 / BASE_FPS)
 ESP32Clock::time_point lastTime{};
 float fps{};
 
+// std::this_thread::sleep_until returns earlier than the specified time, so implemeted own function.
 void sleepUntil(const std::chrono::time_point<ESP32Clock, UpdateDuration>& absTime)
 {
     auto us = std::chrono::duration_cast<std::chrono::microseconds>(absTime - ESP32Clock::now()).count();
@@ -68,9 +70,9 @@ void sleepUntil(const std::chrono::time_point<ESP32Clock, UpdateDuration>& absTi
 auto& display = M5.Display;
 SdFs sd;
 uint8_t volume{72}; // 0~255
-uint8_t* buffer; // 1 of JPG file
+uint8_t* buffer; // For 1 of JPG file
 uint32_t currentFrame{}, maxFrames{};
-uint32_t decodeCycle{}, drawCycle{};
+uint32_t loadCycle{}, drawCycle{};
 MainClass mainClass;
 gob::CombinedFiles gcf;
 FileList list;
@@ -133,7 +135,7 @@ Wave wav;
 // WARNING: BUS must be released by endWrite()
 static bool loadJpg()
 {
-    ScopedProfile(decodeCycle);
+    ScopedProfile(loadCycle);
 #ifndef FIXED_FRAME
     if(!gcf.eof())
     {
@@ -143,6 +145,14 @@ static bool loadJpg()
     }
     return false;
 #else
+    if(FIXED_FRAME < gcf.files())
+    {
+        while(!gcf.eof() && currentFrame < FIXED_FRAME)
+        {
+            gcf.read(buffer, JPG_BUFFER_SIZE);
+            currentFrame = gcf.readed();
+        }
+    }
     return true;
 #endif
 }
@@ -198,13 +208,10 @@ void setup()
     M5.begin(cfg);
     M5.setPrimaryDisplayType(m5::board_t::board_M5ModuleDisplay);
 
+#if defined(FBSD_ENABLE_SD_UPDATER)
     // SD-Updater
-#if defined(ENABLE_SD_UPDATER)
-    //    SDUCfg.setLabelMenu("< Menu");               // BtnA label: load menu.bin
-    //    SDUCfg.setLabelSkip("Launch");               // BtnB label: skip the lobby countdown and run the app
-    //    SDUCfg.setLabelSave("Save");                 // BtnC label: save the sketch to the SD
-    SDUCfg.setAppName("M5S_FlipBookSDSD");         // lobby screen label: application name
-    SDUCfg.setBinFileName("/M5S_FlipBookSD.bin"); // if file path to bin is set for this app, it will be checked at boot and created if not exist
+    SDUCfg.setAppName("M5Stack_FlipBookSDSD");
+    SDUCfg.setBinFileName("/M5Stack_FlipBookSD.bin");
     auto SdFatSPIConfig = SdSpiConfig( TFCARD_CS_PIN, SHARED_SPI, SD_SCK_MHZ(25) );
     checkSDUpdater(sd, String(MENU_BIN), 2000, &SdFatSPIConfig);
 #endif
@@ -215,29 +222,25 @@ void setup()
     while(retry-- && !(mounted = sd.begin((unsigned)TFCARD_CS_PIN, SD_SCK_MHZ(25))) ) { delay(500); }
     if(!mounted) { Serial.printf("%s\n", "Failed to mount file system\n"); abort(); }
 
+    // 
     if(display.width() < display.height()) { display.setRotation(display.getRotation() ^ 1); }
     //display.setBrightness(64);
     display.setFont(&Font2);
     display.setTextDatum(textdatum_t::top_center);
+    display.clear(0);
+    display.setAddrWindow(0, 0, display.width(), display.height());
 
+    M5.Speaker.setVolume(volume);
     M5.BtnA.setHoldThresh(500);
     M5.BtnB.setHoldThresh(500);
     M5.BtnC.setHoldThresh(500);
 
-    //    display.clear(TFT_DARKGREEN);
-    display.clear(0);
-    display.setAddrWindow(0, 0, display.width(), display.height());
-
     // Allocate buffer
-    buffer = (uint8_t*)heap_caps_malloc(JPG_BUFFER_SIZE, MALLOC_CAP_DMA);
+    buffer = (uint8_t*)heap_caps_malloc(JPG_BUFFER_SIZE, MALLOC_CAP_DMA); // Must allocate on SRAM
     assert(buffer);
     Serial.printf("Buffer:%p\n", buffer);
 
     mainClass.setup(&display);
-
-    /// WAV
-    //M5.Speaker.begin();
-    M5.Speaker.setVolume(volume);
 
     // file list
     list.make("/gcf");
@@ -267,7 +270,8 @@ static void loopMenu()
 
     auto prevType = playType;
     auto prevCur = list.current();
-    
+
+    // Decide and play
     if(M5.BtnB.wasClicked())
     {
         display.clear(0);
@@ -279,6 +283,7 @@ static void loopMenu()
         }
     }
 
+    // Change play type or prev GCF file.
     if(M5.BtnA.wasHold())
     {
         --playType;
@@ -291,6 +296,7 @@ static void loopMenu()
         list.prev();
     }
 
+    // Change play type or prev GCF file.
     if(M5.BtnC.wasHold())
     {
         ++playType;
@@ -317,20 +323,23 @@ static void loopRender()
     {
         ScopedProfile(drawCycle);
         mainClass.drawJpg(buffer, JPG_BUFFER_SIZE); // Process on multiple cores
-        //mainClass.drawJpg(buffer, JPG_BUFFER_SIZE, false); // Process on single core.
+        //mainClass.drawJpg(buffer, JPG_BUFFER_SIZE, false); // Process on single core. Try it, if If assert occurs on xQueueSend call. (However, FPS will be reduced)
     }
 
+    // Keep FPS
     sleepUntil(lastTime + durationTime);
     auto now = ESP32Clock::now();
     auto delta = now - lastTime;
     lastTime = now;
     fps = BASE_FPS / std::chrono::duration_cast<UpdateDuration>(delta).count();
-    Serial.printf("%2.2f %5d/%5d %u/%u\n", fps, currentFrame, maxFrames, decodeCycle, drawCycle);
+    Serial.printf("%2.2f %5d/%5d %u/%u\n", fps, currentFrame, maxFrames, loadCycle, drawCycle);
 
-#if 1
+    //
     M5.update();
+    // Change volume
     if(M5.BtnA.isPressed()) { if(volume >   0) { --volume; } M5.Speaker.setVolume(volume); }
     if(M5.BtnC.isPressed()) { if(volume < 255) { ++volume; } M5.Speaker.setVolume(volume); }
+    // Stop
     if(M5.BtnB.wasClicked())
     {
         loop_f = loopMenu;
@@ -339,22 +348,19 @@ static void loopRender()
         display.endWrite();
         return;
     }
-#endif
-
     display.endWrite();
-    
-#if 1
+
     if(currentFrame < maxFrames - 1)
     {
         loadJpg();
     }
+    // If the end of frames...
     else
     {
         switch(playType)
         {
-        case PlayType::Single: break;
-        case PlayType::RepeatSingle:
-            Serial.printf("Repeat single\n");
+        case PlayType::Single: break; // Nop
+        case PlayType::RepeatSingle: // Repeat single
             currentFrame = 0;
             gcf.rewind();
             if(!loadJpg()) { wav.stop(); loop_f = loopMenu; return; }
@@ -362,7 +368,7 @@ static void loopRender()
             wav.play();
             lastTime = ESP32Clock::now();
             break;
-        default:
+        default: // Repeat all / shuffle
             list.next();
             display.clear(0);
             if(!playGCF(list.getCurrentFullpath(), false)) { wav.stop(); loop_f = loopMenu; return; }
@@ -370,10 +376,6 @@ static void loopRender()
             break;
         }
     }
-#else
-    loadJpg();
-#endif
-
     display.startWrite();
 }
 
