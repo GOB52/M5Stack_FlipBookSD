@@ -5,7 +5,8 @@
 # Author: GOB https://twitter.com/gob_52_gob
 #
 # Require
-#  ffmpeg, convert (ImageMagick)
+#  FFmpeg,
+#  convert (ImageMagick)
 #  ffmpeg-normalize
 #  gcf.py (Written by GOB)
 #
@@ -20,7 +21,7 @@ if [ $# -ne 2 ];then
    exit 1
 fi
 
-# Movie to each jpeg files
+# Output JPEG images from movie.
 rm -rf jpg
 mkdir jpg
 ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg
@@ -34,7 +35,7 @@ do
     fi
 done
 
-# Combine jpg files
+# Combine JPEG files
 #python gcf.py -v jpg ${1%.*}.$2.gcf
 python gcf.py jpg ${1%.*}.$2.gcf
 # Make 8bit 8K mono wav and normalize

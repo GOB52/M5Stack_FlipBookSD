@@ -2,9 +2,16 @@
 
 [in English](README.en.md)
 
+## デモ
+
+SINTEL (Trailer)
+[Creative Commons Attribution 3.0](http://creativecommons.org/licenses/by/3.0/)  
+© copyright Blender Foundation | [www.sintel.org](https://www.sintel.org)
+
+
 ## 概要
 
-動画ファイルから作成された分割 [JPEG](https://ja.wikipedia.org/wiki/JPEG) ファイルを gcf (オリジナル形式) でまとめたファイルと Wave ファイルを SD カードから再生します。  
+動画ファイルから作成された分割 [JPEG](https://ja.wikipedia.org/wiki/JPEG) ファイルを [gcf file](#gcfファイルフォーマット)(オリジナル形式) でまとめたファイルと Wave ファイルを SD カードから再生します。  
 SD からパラパラ漫画のように画像と音声を再生することで、動画再生に近い事をするアプリケーションです。  
 マルチコアを使用して DMA による描画と、音声再生を行っています。
 
@@ -36,14 +43,14 @@ SD からパラパラ漫画のように画像と音声を再生することで�
 * [Convert(ImageMagick)](https://imagemagick.org/)
 * [ffmpeg-normalize](https://github.com/slhck/ffmpeg-normalize)
 
-インストール方法などは各ヘージを参照してください。
+インストール方法などは各ウェブページを参照してください。
 
 ### 手順
 データはターミナル上で作成します。  
 動画データは FFmpeg で処理できる物であればフォーマットは問いません。
 1. 任意に作ったデータ作成用ディレクトリに動画データをコピーする
 1. 同ディレクトリに [conv.sh](conv.sh) と [gcf.py](gcf.py) をコピーする
-1. シェルスクリプトを次のように指定して実行する。(シェルはあなたの環境のものを使用してください)  
+1. シェルスクリプトを次のように指定して実行する。  
 **bash conv.sh 動画ファイル名 フレームレート(数)**
 1. 動画ファイル名.フレームレート.gcf 動画ファイル名.wav が出力される
 1. 上記 2 つのファイルを SD カードの **/gcf** にコピーする。
@@ -59,6 +66,13 @@ bash conv.sh bar.mp4 24
 cp bar.24.gcf your_sd_card_path/gcf
 cp bar.wav your_sd_card_path/gcf
 ```
+
+#### シェルスクリプトで行っている事
+* 動画から指定されたフレームレートでJPEG画像を出力する。(出力ディレクトリ ./jpg を作成します)
+* 出力された JPEG ファイルのサイズが内部バッファを超えないように調整する。 (10KiB)
+* JPEG ファイルを結合して gcf ファイルを作成する。
+* 動画から音声データを出力し、平滑化する。
+
 
 ### データの制限
 * wav データは 8KHz 符号なし 8bit mono で出力します  
@@ -142,7 +156,7 @@ SD カードのファイルのオープンとシークにはそれなりの時�
 
 1 画像あたりの読み込み処理時間は逐次オープンだと数十 ms だったものが 数 ms となっています。
 
-### gcf ファイル
+### gcfファイルフォーマット
 拡張子は **G**ob **C**ombined **F**iles の略称です。  
 以下の模式のように、ヘッダに続いてサイズと実データが並んでいるだけの単純なファイルです。  
 先頭からサイズ分だけ読み続けていくだけで一切明示的なシークを必要としません。

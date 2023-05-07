@@ -2,9 +2,16 @@
 
 [日本語](README.md)
 
+## Demo
+
+SINTEL (Trailer)
+[Creative Commons Attribution 3.0](http://creativecommons.org/licenses/by/3.0/)  
+© copyright Blender Foundation | [www.sintel.org](https://www.sintel.org)
+
+
 ## Overview
-This application plays gcf file(original format) that are combined [JPEG](https://en.wikipedia.org/wiki/JPEG) files separated from video file, along with Wave file.  
-This application works like a video playback by playing back the combined images in SD with sound.
+This application plays [gcf file](#gcf-file-format)(original format) that are combined [JPEG](https://en.wikipedia.org/wiki/JPEG) files splited from video file, along with Wave file.  
+This application works like a video playback by playing back the combined images in SD with sound.  
 It uses multi-cores to perform rendering with DMA and audio playback.
 
 
@@ -37,7 +44,7 @@ However, Basic and Gray, which do not have PSRAM, have significant limitations o
 * [Convert(ImageMagick)](https://imagemagick.org/)
 * [ffmpeg-normalize](https://github.com/slhck/ffmpeg-normalize)
 
-(See also each web pages for installation) 
+(See also each webpage for installation) 
 
 ### Procedure
 Making data on terminal.  
@@ -45,7 +52,7 @@ Video data can be in any format as long as it can be processed by FFmpeg.
 
 1. Copy video data to an arbitrarily created directory.
 1. Copy [conv.sh](conv.sh) and [gcf.py](gcf.py) to the same directory.
-1. Execute the shell script as follows (Using a shell from your environment)   
+1. Execute the shell script as follows
 **bash conv.sh videofilename framerate(number)**  
 1. The files that named "videofilename.framerate.gcf" and "videofilename.wav" output to same directory.
 1. Copy the above two files to **/gcf** on the SD card.
@@ -61,6 +68,12 @@ bash conv.sh bar.mp4 24
 cp bar.24.gcf your_sd_card_path/gcf
 cp bar.wav your_sd_card_path/gcf
 ```
+
+#### Processes performed by shell scripts
+* Output JPEG images from video at the specified frame rate.(Create output directory . /jpg is created)
+* Adjust the size of the output JPEG file so that it does not exceed the internal buffer. (10KiB)
+* Combine JPEG files to create a gcf file.
+* Output audio data from the video and normalize it out.
 
 ### Data restrictions
 * Wav data is output in 8KHz, unsigned 8bit, mono format.
