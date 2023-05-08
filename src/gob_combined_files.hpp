@@ -23,8 +23,7 @@ struct CombinedFilesHeader
 {
     uint32_t signature{}; // "GCF0"
     uint32_t files{};
-    uint32_t reserved0{};
-    uint32_t reserved1{};
+    uint32_t reserved[2];
 };
 
 class CombinedFiles

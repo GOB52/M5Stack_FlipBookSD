@@ -1,19 +1,92 @@
-
-
+/*!
+  @file jpg_sprite.cpp
+  @brief Class for drawing from JPEG file on memory to sprite derived from LGFX_Sprite
+  @note Using multi-core
+ */
 #include "jpg_sprite.hpp"
 
 #pragma GCC optimize ("O3")
 
+namespace
+{
+static void write888(uint8_t* dst, const uint8_t* src, uint32_t line, uint32_t outWidth, uint32_t w, uint32_t h)
+{
+    line *= 3;
+    outWidth *= 3;
+    w *= 3;
+    do {
+        memcpy(dst, src, line);
+        src += w;
+        dst += outWidth;
+    } while (--h);
+}
+    
+static void write565(uint8_t* dst, const uint8_t* src, uint32_t line, uint32_t outWidth, uint32_t w, uint32_t h)
+{
+    do
+    {
+        auto s = src;
+        auto d = dst;
+        uint32_t l = line;
+        while (l--)
+        {
+            uint32_t r = s[0];
+            uint32_t g = s[1];
+            uint32_t b = s[2];
+            s += 3;
+            g = g >> 2;
+            r = (r >> 3) & 0x1F;
+            r = (r << 3) + (g >> 3);
+            b = (b >> 3) + (g << 5);
+            d[0] = r;
+            d[1] = b;
+            d += 2;
+        }
+        dst += outWidth * 2;
+        src += w * 3;
+    }
+    while (--h);
+}
+
+static void write332(uint8_t* dst, const uint8_t* src, uint32_t line, uint32_t outWidth, uint32_t w, uint32_t h)
+{
+    do {
+        auto s = src;
+        auto d = dst;
+        uint32_t l = line;
+        while (l--) {
+            uint32_t r = s[0];
+            uint32_t g = s[1];
+            uint32_t b = s[2];
+            s += 3;
+            r >>= 5;
+            g >>= 5;
+            b >>= 6;
+            g += r << 3;
+            b += g << 2;
+            d[0] = b;
+            ++d;
+        }
+        dst += outWidth;
+        src += w * 3;
+    } while (--h);
+}
+//
+}
+
+namespace gob
+{
+
 JpgSprite:: JpgSprite(LovyanGFX* parent) : LGFX_Sprite(parent)
 {
     _jdec.multitask_begin();
-    _fp_write = write565;
-    _bytesize = 2;
+    setup();
 }
 
 void JpgSprite::setup()
 {
     _fp_write = nullptr;
+    _bytesize = 0;
     switch (getColorDepth())
     {
     case lgfx::color_depth_t::rgb565_2Byte:
@@ -29,7 +102,7 @@ void JpgSprite::setup()
       _bytesize = 1;
       break;
     default:
-        Serial.printf("Unsupport format\n");
+        //Serial.printf("Unsupport format\n");
         break;
     }
 }
@@ -43,7 +116,7 @@ bool JpgSprite::drawJpgEx(const uint8_t* buf, const int32_t len, const int32_t o
 {
     if(!_fp_write)
     {
-        Serial.printf("fp_write NULL\n");
+        //Serial.printf("fp_write NULL\n");
         return false;
     }
     _filebuf = buf;
@@ -142,4 +215,5 @@ uint32_t JpgSprite::jpgWrite(TJpgD *jdec, void *bitmap, TJpgD::JRECT *rect)
     me->_fp_write(dst, src, line, sWidth, w, h);
     return 1;
 }
-
+//
+}
