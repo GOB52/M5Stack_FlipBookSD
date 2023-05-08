@@ -8,7 +8,8 @@ https://user-images.githubusercontent.com/26270227/236666846-6fb2ab43-3636-4a63-
 
 SINTEL (Trailer)
 [Creative Commons Attribution 3.0](http://creativecommons.org/licenses/by/3.0/)  
-© copyright Blender Foundation | [www.sintel.org](https://www.sintel.org)
+© copyright Blender Foundation | [www.sintel.org](https://www.sintel.org)  
+再生の為にデータ形式を改変しています。
 
 ## 概要
 
@@ -118,7 +119,7 @@ static void loopRender()
 または画像サイズを小さくするのも有効です。
 
 ```
-bash conv.sh video,mp4 30 # If reset during playback
+bash conv.sh video.mp4 30 # If reset during playback
 bash conv.sh video.mp4 24 # Reduce frame rate
 ```
 ```sh
@@ -132,7 +133,7 @@ ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
 ## 操作方法
 ### メニュー
 
-|ボタン|機能|
+|ボタン|説明|
 |---|---|
 |Aボタンクリック|前のファイルへ|
 |Bボタンクリック|再生開始|
@@ -141,7 +142,7 @@ ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
 |Cボタン長押し|再生方法変更|
 
 ### 再生中
-|ボタン|機能|
+|ボタン|説明|
 |---|---|
 |Aボタン押下|音量下げる|
 |Bボタンクリック|再生停止してメニューへ|
@@ -164,7 +165,7 @@ SD カードのファイルのオープンとシークにはそれなりの時�
 
 ```cpp
 //GCF HEADER
-uint32_t signature; // "GCF0" 0x30464347 (little endian)
+uint32_t signature; // "GCF0" 0x30464347 (リトルエンディアン)
 uint32_t files; // 格納されているファイル数
 uint32_t reserved[2]; // 予約
 //GCF FILES
@@ -183,6 +184,12 @@ uint32_t sizen{0xFFFFFFFF}; // 終端
 元々は ZIP ファイルを扱いたくて unzipLIB を色々試していました。使い方の習得を兼ねて画像ファイルをまとめた物をパラパラ漫画のように再生しようと思ったのが始まりです。  
 (結局 unzipLIB を使わない形になってしまったわけですが (´･ω･`) )
 
+
+## おまけ
+* src/jpg_sprite.hpp
+* src/jpg_sprite.cpp  
+TJpegDec を利用して、画面ではなく LGFX_Sprite にマルチコアを使用して出力するためのクラスです。  
+色々試行錯誤していた時に作ったのですが、結局使用しない事になりましたが、成果として同梱しました。
 
 
 ## 謝辞

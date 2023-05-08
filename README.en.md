@@ -8,7 +8,9 @@ https://user-images.githubusercontent.com/26270227/236666846-6fb2ab43-3636-4a63-
 
 SINTEL (Trailer)
 [Creative Commons Attribution 3.0](http://creativecommons.org/licenses/by/3.0/)  
-© copyright Blender Foundation | [www.sintel.org](https://www.sintel.org)
+© copyright Blender Foundation | [www.sintel.org](https://www.sintel.org)  
+The data format is modified for playback.
+
 
 ## Overview
 This application plays [gcf file](#gcf-file-format)(original format) that are combined [JPEG](https://en.wikipedia.org/wiki/JPEG) files splited from video file, along with Wave file.  
@@ -16,7 +18,7 @@ This application works like a video playback by playing back the combined images
 It uses multi-cores to perform rendering with DMA and audio playback.
 
 
-## Target device
+## Target devices
 It must be able to run the libraries it depends on and have an SD card.
 * M5Stack Basic 2.6
 * M5Stack Gray
@@ -34,7 +36,7 @@ However, Basic and Gray, which do not have PSRAM, have significant limitations o
 * [M5Stack-SD-Updater](https://github.com/tobozo/M5Stack-SD-Updater)
 
 ## Included
-* [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)  Version modified by @Lovyan03 - san
+* [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)  Version modified by Lovyan03 - san
 
 
 ## How to make the data
@@ -121,7 +123,7 @@ Try reducing the playback frame rate. You can adjust this with the arguments you
 Alternatively, you can reduce the image size.
 
 ```
-bash conv.sh video,mp4 30 # If reset during playback
+bash conv.sh video.mp4 30 # If reset during playback
 bash conv.sh video.mp4 24 # Reduce frame rate
 ```
 ```sh
@@ -167,7 +169,7 @@ No explicit seek is required.
 
 ```cpp
 //GCF HEADER
-uint32_t signature; // "GCF0" 0x30464347 (リトルエンディアン)
+uint32_t signature; // "GCF0" 0x30464347 (little endian)
 uint32_t files; // Number of files stored
 uint32_t reserved[2]; // Reserved
 //GCF FILES
@@ -184,6 +186,12 @@ uint32_t sizen{0xFFFFFFFF}; // Terminator
 ### Digression of the digression
 I was experimenting with unzipLIB because I wanted to handle ZIP files. I wanted to learn how to use it, and I wanted to play back a collection of image files like a flip book.  
 (In the end, I ended up not using unzipLIB (´･ω･`) )
+
+
+## An extra
+
+
+
 
 
 ## Acknowledgments
