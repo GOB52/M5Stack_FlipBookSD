@@ -1,16 +1,20 @@
 #
 # Combines files in the specified directory
 #
+# //GCF HEADER
+# uint32_t signature; // "GCF0" 0x30464347 (little endian)
+# uint32_t files; // Number of files stored
+# uint32_t reserved[2]; // Reserved
+# //GCF FILES
+# uint32_t size0; // File size 0
+# uint8_t data0[size0]; // File data 0
+# uint32_t size1; // File size 1
+# uint8_t data1[size1]; // File data 1
+# .
+# .
+# .
+# uint32_t sizen{0xFFFFFFFF}; // Terminator
 #
-#  header
-#  uint32_t signature "GCF0" gob combine file Version 0
-#  uint32_t file count
-#  uint32_t reserve[2]
-#
-#  files
-#  uint32_t size  0xFFFFFF is end of GCF file
-#  uint8_t [size] 
-#  ....
 
 import os
 import sys
@@ -18,7 +22,6 @@ import argparse
 import glob
 from ctypes import *
 import struct
-import pprint as pp
 
 class GCF0(LittleEndianStructure):
     _pack_ = 2
@@ -69,7 +72,8 @@ def main():
                     outf.write(d)
                     outf.flush()
 
-        outf.write(struct.pack('<L', 0xFFFFFFFF)) # End mark
+        outf.write(struct.pack('<L', 0xFFFFFFFF)) # Terminator
+        outf.flush();
         outf.close()
     
 
