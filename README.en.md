@@ -188,11 +188,12 @@ I was experimenting with unzipLIB because I wanted to handle ZIP files. I wanted
 (In the end, I ended up not using unzipLIB (´･ω･`) )
 
 
-## An extra
-
-
-
-
+## Appendix
+* src/gob\_jpg\_sprite.hpp
+* src/gob\_jpg\_sprite.cpp  
+This class is for JPEG output using multi-cores to LGFX\_Sprite instead of screen.  
+I made it when I was doing a lot of trial and error, but ended up not using it.  
+Too good to waste, so I include it in the package.
 
 ## Acknowledgments
 Those who have been the forerunners in the flip-book program. Your activities have inspired us to create this program.
