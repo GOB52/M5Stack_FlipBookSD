@@ -6,12 +6,11 @@
 
   Author: GOB https://twitter.com/gob_52_gob
 */
+#include <SdFat.h>
 #if defined(FBSD_ENABLE_DISPLAY_MODULE)
 # pragma message "[FBSD] Enable display module"
 # include <M5ModuleDisplay.h>
-#endif 
-
-#include <SdFat.h>
+#endif
 #include <M5Unified.h>
 
 #if defined(FBSD_ENABLE_SD_UPDATER)
@@ -24,7 +23,6 @@
 # define SDU_Sprite LGFX_Sprite
 # define SDU_DISPLAY_TYPE M5GFX*
 # define SDU_DISPLAY_OBJ_PTR &M5.Display
-//# define SDU_TouchButton LGFX_Button
 # include <M5StackUpdater.h>
 #endif
 
@@ -37,6 +35,7 @@
 #include "MainClass.h"
 #include "gob_combined_files.hpp"
 #include "file_list.hpp"
+#include <gob_unifiedButton.hpp>
 
 #ifndef TFCARD_CS_PIN
 # define TFCARD_CS_PIN (4)
@@ -47,9 +46,6 @@
 #ifndef JPG_BUFFER_SIZE
 # define JPG_BUFFER_SIZE (1024*10)
 #endif
-
-// Display only the specified frame (For debug)
-//#define FIXED_FRAME (1023)
 
 namespace
 {
@@ -92,42 +88,53 @@ PlayType& operator--(PlayType& pt)
 }
 PlayType playType{PlayType::RepeatAll};
 
-PROGMEM const char ptSingle[] = "play single";
-PROGMEM const char ptRepeatSingle[] = "repeat single";
-PROGMEM const char ptRepeatAll[] = "repeat all";
-PROGMEM const char ptRepeatSfuffle[] = "repeat shuffle";
+PROGMEM const char ptSingle[] = "Play single";
+PROGMEM const char ptRepeatSingle[] = "Repeat single";
+PROGMEM const char ptRepeatAll[] = "Repeat all";
+PROGMEM const char ptRepeatSfuffle[] = "Repeat shuffle";
 PROGMEM const char* ptTable[] = { ptSingle, ptRepeatSingle, ptRepeatAll, ptRepeatSfuffle };
 
 class Wave
 {
   public:
-    ~Wave() { if(_buf) { free(_buf); } }
+    ~Wave() { free(_buf); }
 
     // WARNING: BUS must be released by endWrite()
     bool load(const char* path)
     {
-        if(_buf) { free(_buf); }
-        stop();
-        FsFile f = sd.open(path);
-        if(f)
+        // Allocate largest heap and keep it. (At PSRAM if exists)
+        if(!_buf)
         {
-            size_t fsz = f.size();
-            Serial.printf("WAV:%zu\n", fsz);
-            _buf = (uint8_t*)malloc(fsz); // Allocated at PSRAM in most cases if exists PSRAM
-            if(_buf) {  _size = f.read(_buf, fsz); }
-            f.close();
-            return _buf && _size == fsz;
+            _memSize = heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
+            M5_LOGI("Allocate for wave %u", _memSize);
+            _buf = (uint8_t*)malloc(_memSize);
+            if(!_buf)  {M5_LOGE("Failed to allocate wave buffer"); return false; }
         }
-        return false;
+
+        stop();
+        
+        FsFile f = sd.open(path);
+        if(!f) { M5_LOGE("Failed to open [%s]", path); return false; }
+
+        size_t fsz = f.size();
+        _dataSize = 0;
+        if(fsz <= _memSize)
+        {
+            _dataSize = f.read(_buf, fsz);
+        }
+        f.close();
+        return _dataSize == fsz;
     }
-    void play() { if(_buf) { M5.Speaker.playWav(_buf, _size); }}
+    void play() { if(_buf && _dataSize) { M5.Speaker.playWav(_buf, _dataSize); }}
     void stop() { M5.Speaker.stop(); }
     
   private:
     uint8_t* _buf{};
-    uint32_t _size{};
+    size_t _memSize{}, _dataSize{};
 };
 Wave wav;
+
+gob::UnifiedButton unfiedButton;
 //
 }
 
@@ -178,10 +185,11 @@ static bool playGCF(const String& path, const bool bus = true)
     // gcf open and load 1st frame
     if(!gcf.open(path.c_str()) || !loadJpg()) {return false; }
     maxFrames = gcf.files();
-    Serial.printf("[%s] MaxFrames:%u FrameRate:%u\n", path.c_str(), maxFrames, fr);
+    M5_LOGI("[%s] MaxFrames:%u FrameRate:%u", path.c_str(), maxFrames, fr);
     
     String wpath = FileList::changeExt(path, "wav");
-    wav.load(wpath.c_str());
+    auto wb = wav.load(wpath.c_str());
+    if(!wb) { M5_LOGE("Failed to load wav"); }
     
     if(bus) { display.startWrite(); }
 
@@ -191,13 +199,6 @@ static bool playGCF(const String& path, const bool bus = true)
 
 void setup()
 {
-    // Incrase internal heap (Not effective in some environments)
-    esp_bluedroid_disable();
-    esp_bluedroid_deinit();
-    esp_bt_controller_disable();
-    esp_bt_controller_deinit();
-    esp_bt_mem_release(ESP_BT_MODE_BTDM);
-
     // M5Unified
     auto cfg = M5.config();
 #if defined(__M5GFX_M5MODULEDISPLAY__)
@@ -207,21 +208,22 @@ void setup()
     cfg.external_speaker.module_display = true;
     M5.begin(cfg);
     M5.setPrimaryDisplayType(m5::board_t::board_M5ModuleDisplay);
+    M5.Log.setLogLevel(m5::log_target_display,  ESP_LOG_NONE); // Disable output to display
 
 #if defined(FBSD_ENABLE_SD_UPDATER)
     // SD-Updater
-    SDUCfg.setAppName("M5Stack_FlipBookSDSD");
+    SDUCfg.setAppName("M5Stack_FlipBookSD");
     SDUCfg.setBinFileName("/M5Stack_FlipBookSD.bin");
     auto SdFatSPIConfig = SdSpiConfig( TFCARD_CS_PIN, SHARED_SPI, SD_SCK_MHZ(25) );
     checkSDUpdater(sd, String(MENU_BIN), 2000, &SdFatSPIConfig);
 #endif
-
+    
     // SdFat
-    int retry = 32;
+    int retry = 10;
     bool mounted{};
-    while(retry-- && !(mounted = sd.begin((unsigned)TFCARD_CS_PIN, SD_SCK_MHZ(25))) ) { delay(500); }
-    if(!mounted) { Serial.printf("%s\n", "Failed to mount file system\n"); abort(); }
-
+    while(retry-- && !(mounted = sd.begin((unsigned)TFCARD_CS_PIN, SD_SCK_MHZ(25))) ) { delay(100); }
+    if(!mounted) { M5_LOGE("Failed to mount %xH", sd.sdErrorCode()); abort(); }
+    
     // 
     if(display.width() < display.height()) { display.setRotation(display.getRotation() ^ 1); }
     //display.setBrightness(64);
@@ -231,29 +233,30 @@ void setup()
     display.setAddrWindow(0, 0, display.width(), display.height());
 
     M5.Speaker.setVolume(volume);
+
     M5.BtnA.setHoldThresh(500);
     M5.BtnB.setHoldThresh(500);
     M5.BtnC.setHoldThresh(500);
-
+    unfiedButton.begin(&display);
+    
     // Allocate buffer
     buffer = (uint8_t*)heap_caps_malloc(JPG_BUFFER_SIZE, MALLOC_CAP_DMA); // Must allocate on SRAM
     assert(buffer);
-    Serial.printf("Buffer:%p\n", buffer);
+    M5_LOGI("Buffer:%p", buffer);
 
     mainClass.setup(&display);
 
     // file list
     list.make("/gcf");
 
-    // Memory usage
-    Serial.printf("End of setup free:%u internal:%u large:%u large internal:%u\n",
-             esp_get_free_heap_size(), esp_get_free_internal_heap_size(),
-             heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
-             heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
-    Serial.printf("PSRAM:size:%u free:%u\n", ESP.getPsramSize(), ESP.getFreePsram());
-    Serial.printf("ESP-IDF Version %d.%d.%d\n",
+    // Information
+    M5_LOGI("ESP-IDF Version %d.%d.%d",
            (ESP_IDF_VERSION>>16) & 0xFF, (ESP_IDF_VERSION>>8)&0xFF, ESP_IDF_VERSION & 0xFF);
-
+    M5_LOGI("End of setup free:%u internal:%u large internal:%u",
+            esp_get_free_heap_size(), esp_get_free_internal_heap_size(),
+            heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+    M5_LOGI("PSRAM:size:%u free:%u largest:%u",
+            ESP.getPsramSize(), ESP.getFreePsram(),heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
     
     lastTime = ESP32Clock::now();
 }
@@ -266,8 +269,6 @@ loop_function loop_f = loopMenu;
 // Menu
 static void loopMenu()
 {
-    M5.update();
-
     auto prevType = playType;
     auto prevCur = list.current();
 
@@ -278,6 +279,7 @@ static void loopMenu()
         if(playGCF(list.getCurrentFullpath()))
         {
             loop_f = loopRender;
+            unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::transparent_all);
             lastTime = ESP32Clock::now();
             return;
         }
@@ -292,7 +294,6 @@ static void loopMenu()
     }
     else if(M5.BtnA.wasClicked())
     {
-
         list.prev();
     }
 
@@ -308,13 +309,16 @@ static void loopMenu()
         list.next();
     }
 
-    if(prevType != playType || prevCur != list.current()) { display.clear(0); }
+    bool dirty{};
+    if(prevType != playType || prevCur != list.current()) { display.clear(0); dirty = true;}
     
     display.drawString(list.getCurrent().c_str(), display.width()/2, display.height()/2);
     char str[128];
     snprintf(str, sizeof(str), "%d/%d", list.current(), list.files()); str[sizeof(str)-1] = '\0';
     display.drawString(str, display.width()/2, display.height()/2 + 16);
     display.drawString(ptTable[(int8_t)playType], display.width()/2, display.height()/2 + 48);
+
+    unfiedButton.draw(dirty);
 }
 
 // Render to lcd directly with DMA
@@ -332,10 +336,8 @@ static void loopRender()
     auto delta = now - lastTime;
     lastTime = now;
     fps = BASE_FPS / std::chrono::duration_cast<UpdateDuration>(delta).count();
-    Serial.printf("%2.2f %5d/%5d %u/%u\n", fps, currentFrame, maxFrames, loadCycle, drawCycle);
+    M5_LOGV("%2.2f %5d/%5d %u/%u", fps, currentFrame, maxFrames, loadCycle, drawCycle);
 
-    //
-    M5.update();
     // Change volume
     if(M5.BtnA.isPressed()) { if(volume >   0) { --volume; } M5.Speaker.setVolume(volume); }
     if(M5.BtnC.isPressed()) { if(volume < 255) { ++volume; } M5.Speaker.setVolume(volume); }
@@ -343,6 +345,7 @@ static void loopRender()
     if(M5.BtnB.wasClicked())
     {
         loop_f = loopMenu;
+        unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::bottom);
         wav.stop();
         display.clear(0);
         display.endWrite();
@@ -360,18 +363,31 @@ static void loopRender()
         switch(playType)
         {
         case PlayType::Single: break; // Nop
-        case PlayType::RepeatSingle: // Repeat single
+        case PlayType::RepeatSingle:  // Repeat single
+            M5_LOGI("Repeat single");
             currentFrame = 0;
             gcf.rewind();
-            if(!loadJpg()) { wav.stop(); loop_f = loopMenu; return; }
             wav.stop();
+            if(!loadJpg())
+            {
+                loop_f = loopMenu;
+                unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::bottom);
+                return;
+            }
             wav.play();
             lastTime = ESP32Clock::now();
             break;
         default: // Repeat all / shuffle
+            M5_LOGI("To next");
             list.next();
             display.clear(0);
-            if(!playGCF(list.getCurrentFullpath(), false)) { wav.stop(); loop_f = loopMenu; return; }
+            if(!playGCF(list.getCurrentFullpath(), false))
+            {
+                wav.stop();
+                loop_f = loopMenu;
+                unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::bottom);
+                return;
+            }
             lastTime = ESP32Clock::now();
             break;
         }
@@ -382,6 +398,8 @@ static void loopRender()
 //
 void loop()
 {
+    unfiedButton.update();
+    M5.update();
     loop_f();
 }
 

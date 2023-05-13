@@ -3,14 +3,13 @@
   This is a modified version based on
   https://github.com/lovyan03/M5Stack_JpgLoopAnime/blob/master/JpgLoopAnime/src/MainClass.h (Thanks Lovyan03-san)
  */
+#include <M5Unified.h> // For Log
 #include "MainClass.h"
 
 #pragma GCC optimize ("O3")
 
 bool MainClass::setup(LovyanGFX* lcd)
 {
-    Serial.println("MainClass setup.");
-
     _lcd = lcd;
     _lcd_width = lcd->width();
     _lcd_height = lcd->height();
@@ -39,7 +38,7 @@ bool MainClass::drawJpg(const uint8_t* buf, int32_t len, const bool multi)
     _remain = len;
     TJpgD::JRESULT jres = _jdec.prepare(jpgRead, this);
     if (jres != TJpgD::JDR_OK) {
-        Serial.printf("prepare failed! %d\r\n", jres);
+        M5_LOGE("prepare failed! %d", jres);
         return false;
     }
 
@@ -59,7 +58,7 @@ bool MainClass::drawJpg(const uint8_t* buf, int32_t len, const bool multi)
     } else {
         _off_y = 0;
     }
-    //Serial.printf("j(%d,%d) o(%d,%d) j:[%d,%d] out[%d,%d]\n", _jpg_x, _jpg_y, _off_x, _off_y, _jdec.width, _jdec.height, _out_width, _out_height);
+    //M5.Log.printf("j(%d,%d) o(%d,%d) j:[%d,%d] out[%d,%d]\n", _jpg_x, _jpg_y, _off_x, _off_y, _jdec.width, _jdec.height, _out_width, _out_height);
         
     jres = multi ? _jdec.decomp_multitask(_fp_jpgWrite, jpgWriteRow) :  _jdec.decomp(_fp_jpgWrite, jpgWriteRow);
     if (jres > TJpgD::JDR_INTR)
@@ -67,7 +66,7 @@ bool MainClass::drawJpg(const uint8_t* buf, int32_t len, const bool multi)
         // If the value is 1 (JDR_INTR),
         // No problem because the process is stopped by myself.
         // See also [*1]
-        Serial.printf("decomp failed! %d\r\n", jres);
+        M5_LOGE("decomp failed! %d", jres);
         return false;
     }
     return true;

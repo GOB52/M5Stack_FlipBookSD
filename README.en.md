@@ -23,7 +23,7 @@ It must be able to run the libraries it depends on and have an SD card.
 * M5Stack Basic 2.6
 * M5Stack Gray
 * M5Stack Core2 
-* Other devices that meets the requirements
+* M5Stack CoreS3
  
 However, Basic and Gray, which do not have PSRAM, have significant limitations on the amount of time that audio can be played.
 
@@ -81,7 +81,9 @@ cp bar.wav your_sd_card_path/gcf
 ### Data restrictions
 * Wav data is output in 8KHz, unsigned 8bit, mono format.
 If there is not enough memory, no sound will be played. For device without PSRAM, it would have to be a short one to make it sound.  
-On Core2, PSRAM normally has a usable size of 4 MiB, so approximately about 8 minutes and 30 seconds seems to be the maximum playback length.
+On Core2, PSRAM normally has a usable size of 4 MiB, so approximately about 8 minutes and 30 seconds seems to be the maximum playback length.  
+On Core3 that can use 8MB,approximately 16 minutes is considered the maximum playback length.
+
 * Image size and frame rate
 When converting a video to JPEG, the width is 320px and the height is a value that maintains the aspect ratio.  
 Currently, 320 x 240 can be played back at about 24 FPS, and 320 x 180 at about 30 FPS.  
@@ -145,11 +147,11 @@ ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
 |Hold C| Change playback method |
 
 ### During playback
-| Button | Description |
-|---|---|
-|Press A|Decrease sound volume|
-|Click B|Stop payback and back to menu|
-|Press C|Increase sound volume|
+| Button(Basic,Gray,Core2) | Touch(CoreS3)| Description |
+|---|---|---|
+|Press A| Press left 1/3 of the entire screen | Decrease sound volume|
+|Click B| Click center 1/3 of the entire screen | Stop payback and back to menu|
+|Press C| Press rightt 1/3 of the entire screen | Increase sound volume|
 
 ## Digression
 ### Why combine all the JPEG files together?

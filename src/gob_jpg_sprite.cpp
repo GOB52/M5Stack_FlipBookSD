@@ -3,7 +3,7 @@
   @brief Class for drawing from JPEG file on memory to sprite derived from LGFX_Sprite
   @note Using multi-core
  */
-#include "jpg_sprite.hpp"
+#include "gob_jpg_sprite.hpp"
 
 #pragma GCC optimize ("O3")
 
