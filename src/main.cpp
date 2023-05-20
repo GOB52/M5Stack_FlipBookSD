@@ -2,7 +2,7 @@
   M5Stack_FlipBookSD
 
   This application is similar to video playback by playing back images from SD like a flip book.
-  SD からパラパラ漫画のように画像を音声と再生することで、動画再生に近い事をするアプリケーションです。  
+  SD からパラパラ漫画のように画像を音声と共に再生することで、動画再生に近い事をするアプリケーションです。  
 
   Author: GOB https://twitter.com/gob_52_gob
 */
@@ -66,10 +66,11 @@ void sleepUntil(const std::chrono::time_point<ESP32Clock, UpdateDuration>& absTi
 auto& display = M5.Display;
 SdFs sd;
 uint8_t volume{72}; // 0~255
-uint8_t* buffer; // For 1 of JPG file
+uint8_t* buffer; // For 1 of JPEG file
 uint32_t currentFrame{}, maxFrames{};
 uint32_t loadCycle{}, drawCycle{};
 MainClass mainClass;
+bool primaryHDMI{};
 gob::CombinedFiles gcf;
 FileList list;
 
@@ -138,8 +139,8 @@ gob::UnifiedButton unfiedButton;
 //
 }
 
-// Load one of the jpg from GCF.
-// WARNING: BUS must be released by endWrite()
+// Load one of the JPEG imagefrom GCF.
+// WARNING: BUS must be released
 static bool loadJpg()
 {
     ScopedProfile(loadCycle);
@@ -164,7 +165,7 @@ static bool loadJpg()
 #endif
 }
 
-// WARNING: BUS must be released by endWrite()
+// WARNING: BUS must be released
 static bool playGCF(const String& path, const bool bus = true)
 {
     currentFrame = maxFrames = 0;
@@ -177,7 +178,7 @@ static bool playGCF(const String& path, const bool bus = true)
     if(idx2 < 0) { return false; }
     String frs = path.substring(idx2+ 1, idx);
     int fr = frs.toInt();
-    if(fr <= 0) { return false; }
+    if(fr < 1) { return false; }
 
     // durationTime is calculated from frame rate.
     durationTime = UpdateDuration((float)BASE_FPS / fr);
@@ -205,11 +206,57 @@ void setup()
     cfg.module_display.logical_width = 320;
     cfg.module_display.logical_height = 240;
 #endif
-    cfg.external_speaker.module_display = true;
     M5.begin(cfg);
-    M5.setPrimaryDisplayType(m5::board_t::board_M5ModuleDisplay);
-    M5.Log.setLogLevel(m5::log_target_display,  ESP_LOG_NONE); // Disable output to display
+    M5.Log.setLogLevel(m5::log_target_display, (esp_log_level_t)-1); // Disable output to display
 
+#if defined(__M5GFX_M5MODULEDISPLAY__)
+
+    // Choose HDMI if HDMI module and cable connected
+    int32_t idx = M5.getDisplayIndex(m5gfx::board_M5ModuleDisplay);
+    M5_LOGI("ModuleDisplay?:%d",idx);
+    if (idx >= 0)
+    {
+        uint8_t buf[256];
+        //auto dsp = &M5.Displays(idx);
+        if (0 < ((lgfx::Panel_M5HDMI*)(M5.Displays(idx).panel()))->readEDID(buf, sizeof(buf)))
+        {
+            M5_LOGI("Detected the display, Set HDMI primary");            
+            primaryHDMI = true;
+            M5.setPrimaryDisplay(idx);
+            // Speaker settings for ModuleDisplay
+            auto spk_cfg = M5.Speaker.config();
+#if defined ( CONFIG_IDF_TARGET_ESP32S3 )
+            static constexpr const uint8_t pins[][2] =
+                    {// DOUT       , BCK
+                        { GPIO_NUM_13, GPIO_NUM_6 }, // CoreS3 + ModuleDisplay
+                    };
+            int pins_index = 0;
+#else
+            static constexpr const uint8_t pins[][2] =
+                    {// DOUT       , BCK
+                        { GPIO_NUM_2 , GPIO_NUM_27 }, // Core2 and Tough + ModuleDisplay
+                        { GPIO_NUM_15, GPIO_NUM_12 }, // Core + ModuleDisplay
+                    };
+            // !core is (Core2 + Tough)
+            int pins_index = (M5.getBoard() == m5::board_t::board_M5Stack) ? 1 : 0;
+#endif
+            spk_cfg.pin_data_out = pins[pins_index][0];
+            spk_cfg.pin_bck      = pins[pins_index][1];
+            spk_cfg.pin_ws       = GPIO_NUM_0;     // LRCK
+            spk_cfg.i2s_port = I2S_NUM_1;
+            spk_cfg.sample_rate = 48000; // Module Display audio output is fixed at 48 kHz
+            spk_cfg.magnification = 16;
+            spk_cfg.stereo = true;
+            spk_cfg.buzzer = false;
+            spk_cfg.use_dac = false;
+            M5.Speaker.config(spk_cfg);
+        }
+    }
+#endif
+    M5_LOGI("Output to %s", primaryHDMI ? "HDMI" : "Lcd");
+    if(primaryHDMI) { volume = 128; }
+    M5.Speaker.setVolume(volume);
+    
 #if defined(FBSD_ENABLE_SD_UPDATER)
     // SD-Updater
     SDUCfg.setAppName("M5Stack_FlipBookSD");
@@ -222,17 +269,14 @@ void setup()
     int retry = 10;
     bool mounted{};
     while(retry-- && !(mounted = sd.begin((unsigned)TFCARD_CS_PIN, SD_SCK_MHZ(25))) ) { delay(100); }
-    if(!mounted) { M5_LOGE("Failed to mount %xH", sd.sdErrorCode()); abort(); }
+    if(!mounted) { M5_LOGE("Failed to mount %xH", sd.sdErrorCode()); display.clear(TFT_RED); while(1) { delay(10000); } }
     
     // 
     if(display.width() < display.height()) { display.setRotation(display.getRotation() ^ 1); }
-    //display.setBrightness(64);
+    display.setBrightness(128);
     display.setFont(&Font2);
     display.setTextDatum(textdatum_t::top_center);
     display.clear(0);
-    display.setAddrWindow(0, 0, display.width(), display.height());
-
-    M5.Speaker.setVolume(volume);
 
     M5.BtnA.setHoldThresh(500);
     M5.BtnB.setHoldThresh(500);
@@ -240,7 +284,7 @@ void setup()
     unfiedButton.begin(&display);
     
     // Allocate buffer
-    buffer = (uint8_t*)heap_caps_malloc(JPG_BUFFER_SIZE, MALLOC_CAP_DMA); // Must allocate on SRAM
+    buffer = (uint8_t*)heap_caps_malloc(JPG_BUFFER_SIZE, MALLOC_CAP_DMA); // For DMA transfer
     assert(buffer);
     M5_LOGI("Buffer:%p", buffer);
 
@@ -321,6 +365,13 @@ static void loopMenu()
     unfiedButton.draw(dirty);
 }
 
+static void changeToMenu()
+{
+    wav.stop();
+    loop_f = loopMenu;
+    unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::bottom);
+}
+
 // Render to lcd directly with DMA
 static void loopRender()
 {
@@ -336,11 +387,11 @@ static void loopRender()
     auto delta = now - lastTime;
     lastTime = now;
     fps = BASE_FPS / std::chrono::duration_cast<UpdateDuration>(delta).count();
-    M5_LOGV("%2.2f %5d/%5d %u/%u", fps, currentFrame, maxFrames, loadCycle, drawCycle);
-
+    M5_LOGI("%2.2f %5d/%5d %u/%u", fps, currentFrame, maxFrames, loadCycle, drawCycle);
+    
     // Change volume
-    if(M5.BtnA.isPressed()) { if(volume >   0) { --volume; } M5.Speaker.setVolume(volume); }
-    if(M5.BtnC.isPressed()) { if(volume < 255) { ++volume; } M5.Speaker.setVolume(volume); }
+    if(M5.BtnA.isPressed()) { if(volume >   0) { --volume; M5.Speaker.setVolume(volume); } }
+    if(M5.BtnC.isPressed()) { if(volume < 255) { ++volume; M5.Speaker.setVolume(volume); } }
     // Stop
     if(M5.BtnB.wasClicked())
     {
@@ -351,13 +402,13 @@ static void loopRender()
         display.endWrite();
         return;
     }
-    display.endWrite();
 
+    display.endWrite(); // Must be call when access to the SD.
     if(currentFrame < maxFrames - 1)
     {
         loadJpg();
     }
-    // If the end of frames...
+    // If the end of frames
     else
     {
         switch(playType)
@@ -367,13 +418,7 @@ static void loopRender()
             M5_LOGI("Repeat single");
             currentFrame = 0;
             gcf.rewind();
-            wav.stop();
-            if(!loadJpg())
-            {
-                loop_f = loopMenu;
-                unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::bottom);
-                return;
-            }
+            if(!loadJpg()) { changeToMenu(); return; }
             wav.play();
             lastTime = ESP32Clock::now();
             break;
@@ -381,13 +426,7 @@ static void loopRender()
             M5_LOGI("To next");
             list.next();
             display.clear(0);
-            if(!playGCF(list.getCurrentFullpath(), false))
-            {
-                wav.stop();
-                loop_f = loopMenu;
-                unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::bottom);
-                return;
-            }
+            if(!playGCF(list.getCurrentFullpath(), false)) { changeToMenu(); return; }
             lastTime = ESP32Clock::now();
             break;
         }

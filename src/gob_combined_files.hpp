@@ -6,7 +6,7 @@
 #  uint32_t reserve[2]
 #
 #  files
-#  uint32_t size  0 is end of GCF file
+#  uint32_t size  (0xFFFFFFFF is end of GCF file)
 #  uint8_t [size] 
 #  ....
 */
@@ -66,21 +66,21 @@ class CombinedFiles
            len == 0xFFFFFFFF // End of file
            ) { return 0; }
         
-        uint32_t drop{};
-        if(len > sz) { drop = len - sz; }
+        uint32_t skip{};
+        if(len > sz) { skip = len - sz; }
 
         //printf("drop:%u\n", drop);
         
         auto r = _file.read(buf, std::min<uint32_t>(sz, len));
-        if(drop)
+        if(skip)
         {
             auto pos = _file.position();
-            _file.seek(pos + drop);
+            _file.seek(pos + skip);
         }
         return r;
     }
 
-    // Rewind to 1st file
+    // Rewind to 1st JPEG
     bool rewind()
     {
         _current = 0;

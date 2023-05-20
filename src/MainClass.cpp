@@ -3,6 +3,7 @@
   This is a modified version based on
   https://github.com/lovyan03/M5Stack_JpgLoopAnime/blob/master/JpgLoopAnime/src/MainClass.h (Thanks Lovyan03-san)
  */
+#include <SdFat.h>
 #include <M5Unified.h> // For Log
 #include "MainClass.h"
 
@@ -23,11 +24,9 @@ bool MainClass::setup(LovyanGFX* lcd)
         _dmabufs[i] = (uint8_t*)heap_caps_malloc(_lcd_width * 48 * _bytesize, MALLOC_CAP_DMA);
         assert(_dmabufs[i]);
     }
-
     _dmabuf = _dmabufs[0];
 
     _jdec.multitask_begin();
-
     return true;
 }
 
@@ -50,6 +49,7 @@ bool MainClass::drawJpg(const uint8_t* buf, int32_t len, const bool multi)
     } else {
         _off_x = 0;
     }
+
     _out_height = std::min<int32_t>(_jdec.height, _lcd_height);
     _jpg_y = (_lcd_height- _jdec.height) >> 1;
     if (0 > _jpg_y) {
@@ -58,8 +58,8 @@ bool MainClass::drawJpg(const uint8_t* buf, int32_t len, const bool multi)
     } else {
         _off_y = 0;
     }
-    //M5.Log.printf("j(%d,%d) o(%d,%d) j:[%d,%d] out[%d,%d]\n", _jpg_x, _jpg_y, _off_x, _off_y, _jdec.width, _jdec.height, _out_width, _out_height);
-        
+    //M5_LOGI("j(%d,%d) o(%d,%d) j:[%d,%d] out[%d,%d]", _jpg_x, _jpg_y, _off_x, _off_y, _jdec.width, _jdec.height, _out_width, _out_height);
+
     jres = multi ? _jdec.decomp_multitask(_fp_jpgWrite, jpgWriteRow) :  _jdec.decomp(_fp_jpgWrite, jpgWriteRow);
     if (jres > TJpgD::JDR_INTR)
     {
@@ -170,8 +170,6 @@ uint32_t MainClass::jpgWrite16(TJpgD *jdec, void *bitmap, TJpgD::JRECT *rect) {
     do {
         int i = 0;
         do {
-
-
             // In order of speed, ALGO2, ALGO1, ALGO0(Original)
 #define ALGO (2)
 #if ALGO == 0
@@ -185,7 +183,7 @@ uint32_t MainClass::jpgWrite16(TJpgD *jdec, void *bitmap, TJpgD::JRECT *rect) {
             dst[i] = r8 | b5 << 8;
 #elif ALGO == 1
 #pragma message "ALGO 1"
-            uint32_t r = src[i*3+0] ;
+            uint32_t r = src[i*3+0];
             uint32_t g = src[i*3+1];
             uint32_t b = src[i*3+2];
             g = g >> 2;
@@ -216,22 +214,29 @@ uint32_t MainClass::jpgWriteRow(TJpgD *jdec, uint32_t y, uint32_t h) {
     MainClass* me = (MainClass*)jdec->device;
     int_fast16_t oy = me->_off_y;
     int_fast16_t bottom = y + h;
-
+    int_fast16_t yy = y;
+    
     if(bottom < oy || y >= oy + me->_lcd_height) { return 1; }
-    if(y == 0)
-    {
-        me->_lcd->setAddrWindow(me->_jpg_x, me->_jpg_y, me->_out_width, me->_out_height);
-    }
+
+    //M5_LOGI("y:%d, h:%d", y, h);
+
     // Adjust transfer height if there is a positive offset in the y direction
     if(oy > 0)
     {
-        if(oy > y && oy < bottom) { h -= oy % h; }
-        if(oy + me->_lcd_height > y && oy + me->_lcd_height < y + h) { h -= (y + h) - (me->_lcd_height + oy); }
+        yy = y - oy;
+        if(oy > y && oy < bottom) { h -= oy % h; yy = 0; } // First block
+        if(oy + me->_lcd_height > y && oy + me->_lcd_height < y + h) // Last block
+        {
+            h -= (y + h) - (me->_lcd_height + oy);
+        } 
     }
-    me->_lcd->pushPixelsDMA(reinterpret_cast<::lgfx::swap565_t*>(me->_dmabuf), me->_out_width * h);
+    //M5_LOGI("oy:%d y:%d h:%d yy:%d", oy, y, h, yy);
+
+    me->_lcd->pushImageDMA(me->_jpg_x,  me->_jpg_y + yy,
+                           me->_out_width, h,
+                           reinterpret_cast<::lgfx::swap565_t*>(me->_dmabuf));
 
     flip = !flip;
     me->_dmabuf = me->_dmabufs[flip];
     return 1;
 }
-

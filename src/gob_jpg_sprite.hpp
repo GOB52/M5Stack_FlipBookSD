@@ -30,7 +30,7 @@ class JpgSprite : public LGFX_Sprite
       @param buf Buffer of JPEG
       @param len Length of buffer
       @param ox Horizontal drawing offset
-      @param py Vertical drawing offset
+      @param oy Vertical drawing offset
       @retval ==true Success
       @retval ==false Failure
      */
