@@ -208,7 +208,8 @@ void setup()
 #endif
     M5.begin(cfg);
     M5.Log.setLogLevel(m5::log_target_display, (esp_log_level_t)-1); // Disable output to display
-
+    display.clear(TFT_DARKGRAY);
+    
 #if defined(__M5GFX_M5MODULEDISPLAY__)
 
     // Choose HDMI if HDMI module and cable connected

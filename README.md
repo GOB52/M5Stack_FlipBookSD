@@ -205,16 +205,10 @@ TJepgDec の作者
 [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)
 
 
-当アプリケーションの母体となった物です。TJpegDec を使用した JPEG デコーダ部分を拝借し、改造して使っています。  
+当アプリケーションの母体となった物です。TJpegDec を使用して画面に DMA 描画するロジックを拝借しました。  
 M5Unfied, M5GFX の作者でもあります。
 * [Lovyan03](https://twitter.com/lovyan03) さん   
 [M5Stack_JpgLoopAnime](https://github.com/lovyan03/M5Stack_JpgLoopAnime)  
 [ESP32_ScreenShotReceiver](https://github.com/lovyan03/ESP32_ScreenShotReceiver)
-
-
-
-
-
-
 
 

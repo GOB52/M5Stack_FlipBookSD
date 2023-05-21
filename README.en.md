@@ -209,8 +209,8 @@ The author of TJpgDec
 * [ChaN](http://elm-chan.org/) -san  
 [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)
 
-I borrowed and modified the JPEG decoder part using TJpegDec modified by Lovyan03-san.  
-He is the author of M5Unified and M5GFX.
+I borrowed and modified the logic for DMA drawing to the screen using TJpegDec.  
+And he is the author of M5Unified and M5GFX.
 
 * [Lovyan03](https://twitter.com/lovyan03) -san  
 [M5Stack_JpgLoopAnime](https://github.com/lovyan03/M5Stack_JpgLoopAnime)  
