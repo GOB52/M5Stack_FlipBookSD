@@ -52,6 +52,9 @@ SD からパラパラ漫画のように画像と音声を再生することで�
 |S3\_release|基本設定|
 |S3\_release_DisplayModule| HDMI モジュール 対応|
 
+### 再生用サンプルデータ
+[sample_data.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11523705/sample_data.zip) をダウンロードして SD カードの **/gcf** へコピーしてください。
+
 ## データの作成方法
 ### 必要なもの
 * [Python3](https://www.python.org/)
