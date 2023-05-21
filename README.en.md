@@ -53,6 +53,10 @@ However, Basic and Gray, which do not have PSRAM, have significant limitations o
 |S3\_release|Basic Settings|
 |S3\_release_DisplayModule| Support SD-Updater |
 
+### Sample data for playback
+Download [sample_data.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11523705/sample_data.zip) and copy it to **/gcf** on your SD card.
+
+
 ## How to make data
 ### Required tools 
 * [Python3](https://www.python.org/)
