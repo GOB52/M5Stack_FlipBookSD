@@ -38,9 +38,22 @@ However, Basic and Gray, which do not have PSRAM, have significant limitations o
 ## Included
 * [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)  Version modified by Lovyan03 - san
 
+## Build type (PlatfromIO)
+### For Basic,Gray,Core2
+|Env|Description|
+|---|---|
+|release|Basic Settings|
+|release\_DisplayModule| Support [HDMI Module](https://shop.m5stack.com/products/display-module-13-2)|
+|release\_SdUpdater| Support SD-Updater |
+|release\_SdUpdater\_DisplayModule| Support HDMI Module and SD-Updater |
 
-## How to make the data
+### For CoreS3
+|Env|Description|
+|---|---|
+|S3\_release|Basic Settings|
+|S3\_release_DisplayModule| Support SD-Updater |
 
+## How to make data
 ### Required tools 
 * [Python3](https://www.python.org/)
 * [FFmpeg](https://ffmpeg.org/)
@@ -51,7 +64,7 @@ However, Basic and Gray, which do not have PSRAM, have significant limitations o
 
 ### Procedure
 Making data on terminal.  
-Video data can be in any format as long as it can be processed by FFmpeg.
+Video data can be in any format that can be processed by FFmpeg.
 
 1. Copy video data to an arbitrarily created directory.
 1. Copy [conv.sh](conv.sh) and [gcf.py](gcf.py) to the same directory.
@@ -62,11 +75,11 @@ Video data can be in any format as long as it can be processed by FFmpeg.
 
 e.g.)
 ```
-cd ~
-mkdir making_dir
-cp bar.mp4 making_dir
-cp conv.sh making_dir
-cp gcf.py making_dir
+mkdir foo
+cp bar.mp4 foo
+cp conv.sh foo
+cp gcf.py foo
+cd foo
 bash conv.sh bar.mp4 24
 cp bar.24.gcf your_sd_card_path/gcf
 cp bar.wav your_sd_card_path/gcf
@@ -100,7 +113,7 @@ The cause is that drawing did not finish within the specified time, and the SD a
 Also, in rare cases, it may take a long time to read from SD, which may cause a reset as described above.  
 The cause of this is not known.
 
-#### Dealing by the program
+#### Workaround by the program
 How to deal with it in the program
 Switch multi-core playback to single-core playback.  
 Switch the corresponding section of main.cpp to the one using a single core.  
@@ -120,9 +133,9 @@ static void loopRender()
 }
 ```
 
-#### Dealing by the data
+#### Workaround by the data
 Try reducing the playback frame rate. You can adjust this with the arguments you give to conv.sh.  
-Alternatively, you can reduce the image size.
+Or you can reduce the image size.
 
 ```
 bash conv.sh video.mp4 30 # If reset during playback
@@ -149,22 +162,11 @@ ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
 ### During playback
 | Button(Basic,Gray,Core2) | Touch(CoreS3)| Description |
 |---|---|---|
-|Press A| Press left 1/3 of the entire screen | Decrease sound volume|
-|Click B| Click center 1/3 of the entire screen | Stop payback and back to menu|
-|Press C| Press rightt 1/3 of the entire screen | Increase sound volume|
+|Press A| Press left 1/3 of the screen | Decrease sound volume|
+|Click B| Click center 1/3 of the screen | Stop payback and back to menu|
+|Press C| Press right 1/3 of the screen | Increase sound volume|
 
-## Digression
-### Why combine all the JPEG files together?
-Opening and seeking files on an SD card takes a fair amount of time.  
-When JPEG files are opened and displayed one at a time, the speed becomes a bottleneck.  
-Therefore, we have adopted the method of sequentially loading a large single file, which was effective for physical media (floppy disks, etc.) and optical media (CDs, etc.), to shorten the card access time.  
-
-Initially, we used unzipLIB to read from uncompressed ZIP files, but since the file is internally seek  once, we developed an original file format that assumes sequential reading without seeking, and by using this format we were able to eliminate the seeking.  
-
-The read processing time per image has gone from tens of ms for each file opened to a few ms.
-
-
-### gcf file format
+## gcf file format
 The extension stands for **G**ob **C**ombined **F**iles.  
 As shown in the schematic below, this is a simple file with a header followed by the size and actual data.  
 No explicit seek is required.
@@ -185,10 +187,19 @@ uint8_t data1[size1]; // File data 1
 uint32_t sizen{0xFFFFFFFF}; // Terminator
 ```
 
+## Digression
+### Why combine all the JPEG files together?
+Opening and seeking files on an SD card takes a fair amount of time.  
+When JPEG files are opened and displayed one at a time, the speed becomes a bottleneck.  
+Therefore, we have adopted the method of sequentially loading a large single file, which was effective for physical media (floppy disks, etc.) and optical media (CDs, etc.), to shorten the card access time.  
+
+Initially, we used unzipLIB to read from uncompressed ZIP files, but since the file is internally seek  once, we developed an original file format that assumes sequential reading without seeking, and by using this format we were able to eliminate the seeking.  
+
+The read processing time per image has gone from tens of ms for each file opened to a few ms.
+
 ### Digression of the digression
 I was experimenting with unzipLIB because I wanted to handle ZIP files. I wanted to learn how to use it, and I wanted to play back a collection of image files like a flip book.  
 (In the end, I ended up not using unzipLIB (´･ω･`) )
-
 
 ## Appendix
 * src/gob\_jpg\_sprite.hpp
@@ -210,6 +221,7 @@ The author of TJpgDec
 [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)
 
 I borrowed and modified the logic for DMA drawing to the screen using TJpegDec.  
+He also gave me lots of technical advice.  
 And he is the author of M5Unified and M5GFX.
 
 * [Lovyan03](https://twitter.com/lovyan03) -san  

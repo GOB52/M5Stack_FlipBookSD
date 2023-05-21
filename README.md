@@ -1,6 +1,6 @@
 # M5Stack_FlipBookSD
 
-[in English](README.en.md)
+[English](README.en.md)
 
 ## デモ
 
@@ -37,8 +37,22 @@ SD からパラパラ漫画のように画像と音声を再生することで�
 ## 含まれているライブラリ
 * [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)  Lovyan03 さんの改造板
 
-## データの作成方法
+## ビルド種別(PlatfromIO)
+### Basic,Gray,Core2 用
+|Env|説明|
+|---|---|
+|release|基本設定|
+|release\_DisplayModule| [HDMI モジュール](https://shop.m5stack.com/products/display-module-13-2)対応 |
+|release\_SdUpdater| SD-Updater 対応 |
+|release\_SdUpdater\_DisplayModule| HDMI モジュールと SD-Updater 対応|
 
+### CoreS3 用
+|Env|説明|
+|---|---|
+|S3\_release|基本設定|
+|S3\_release_DisplayModule| HDMI モジュール 対応|
+
+## データの作成方法
 ### 必要なもの
 * [Python3](https://www.python.org/)
 * [FFmpeg](https://ffmpeg.org/)
@@ -59,11 +73,11 @@ SD からパラパラ漫画のように画像と音声を再生することで�
 
 例)
 ```
-cd ~
-mkdir making_dir
-cp bar.mp4 making_dir
-cp conv.sh making_dir
-cp gcf.py making_dir
+mkdir foo
+cp bar.mp4 foo
+cp conv.sh foo
+cp gcf.py foo
+cd foo
 bash conv.sh bar.mp4 24
 cp bar.24.gcf your_sd_card_path/gcf
 cp bar.wav your_sd_card_path/gcf
@@ -98,7 +112,7 @@ ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg
 またごく稀に SD からの読み込みに時間がかかる時があり、それによって上記と同様にリセットがかかる場合があります。  
 これは原因がわかっていません。
 
-#### プログラムでの対処
+#### プログラムでの回避策
 マルチコア再生をシングルコア再生に切り替えてみる。  
 main.cpp の該当箇所をシングルコア使用の物に切り替えます。  
 再生速度は落ちますが、バス競合を確実に避けるようになります。
@@ -116,7 +130,7 @@ static void loopRender()
     // ...
 }
 ```
-#### データでの対処
+#### データでの回避策
 再生フレームレートを減らしてみてください。 conv.sh へ与える引数で調整します。  
 または画像サイズを小さくするのも有効です。
 
@@ -145,21 +159,11 @@ ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
 ### 再生中
 |ボタン(Basic,Gray,Core2)|画面タッチ(CoreS3)|説明|
 |---|---|---|
-|Aボタン押下|全体左 1/3|音量下げる|
-|Bボタンクリック|全体真ん中 1/3|再生停止してメニューへ|
-|Cボタン押下|全体右 1/3|音量上げる|
+|Aボタン押下|画面左 1/3|音量下げる|
+|Bボタンクリック|画面真ん中 1/3|再生停止してメニューへ|
+|Cボタン押下|画面右 1/3|音量上げる|
 
-## 余談
-### 何故 JPEG ファイルをまとめているの?
-SD カードのファイルのオープンとシークにはそれなりの時間がかかります。  
-1 枚ずつの JPEG ファイルを逐次開いて表示する場合、その速度がボトルネックとなるのです。  
-そこで物理メディア(フロッピーディスク等)、光学メディア(CD 等) で有効だった、一つにまとめた大きなファイルをシーケンシャルに読み込み続ける手法を採用し、カードアクセスの時間を短縮しています。  
-
-当初は [unzipLIB](https://github.com/bitbank2/unzipLIB) で、無圧縮 ZIP ファイルから読み込んでいたのですが、内部でシークが 1 回行われる為、シーク無しにシーケンシャルに読み込むことを前提としたオリジナルのファイル形式を策定し、それを利用する事でシークを無くすことができました。  
-
-1 画像あたりの読み込み処理時間は逐次オープンだと数十 ms だったものが 数 ms となっています。
-
-### gcfファイルフォーマット
+## gcfファイルフォーマット
 拡張子は **G**ob **C**ombined **F**iles の略称です。  
 以下の模式のように、ヘッダに続いてサイズと実データが並んでいるだけの単純なファイルです。  
 先頭からサイズ分だけ読み続けていくだけで一切明示的なシークを必要としません。
@@ -180,10 +184,19 @@ uint8_t data1[size1]; // 無圧縮データ 1
 uint32_t sizen{0xFFFFFFFF}; // 終端
 ```
 
+## 余談
+### 何故 JPEG ファイルをまとめているの?
+SD カードのファイルのオープンとシークにはそれなりの時間がかかります。  
+1 枚ずつの JPEG ファイルを逐次開いて表示する場合、その速度がボトルネックとなるのです。  
+そこで物理メディア(フロッピーディスク等)、光学メディア(CD 等) で有効だった、一つにまとめた大きなファイルをシーケンシャルに読み込み続ける手法を採用し、カードアクセスの時間を短縮しています。  
+
+当初は [unzipLIB](https://github.com/bitbank2/unzipLIB) で、無圧縮 ZIP ファイルから読み込んでいたのですが、内部でシークが 1 回行われる為、シーク無しにシーケンシャルに読み込むことを前提としたオリジナルのファイル形式を策定し、それを利用する事でシークを無くすことができました。  
+
+1 画像あたりの読み込み処理時間は逐次オープンだと数十 ms だったものが 数 ms となっています。
+
 ### 余談の余談
 元々は ZIP ファイルを扱いたくて unzipLIB を色々試していました。使い方の習得を兼ねて画像ファイルをまとめた物をパラパラ漫画のように再生しようと思ったのが始まりです。  
 (結局 unzipLIB を使わない形になってしまったわけですが (´･ω･`) )
-
 
 ## 付録
 * src/gob_jpg_sprite.hpp
@@ -191,7 +204,6 @@ uint32_t sizen{0xFFFFFFFF}; // 終端
 画面ではなく LGFX_Sprite にマルチコアを使用して JPEG を出力するためのクラスです。  
 色々試行錯誤していた時に作ったのですが、結局使用しない事になりました。  
 もったいないので同梱します。
-
 
 ## 謝辞
 先人としてパラパラ再生をされている方々。お二人に刺激を受けて当アプリケーションは誕生しました。
@@ -206,6 +218,7 @@ TJepgDec の作者
 
 
 当アプリケーションの母体となった物です。TJpegDec を使用して画面に DMA 描画するロジックを拝借しました。  
+技術的なアドバイスもたくさんいただきました。  
 M5Unfied, M5GFX の作者でもあります。
 * [Lovyan03](https://twitter.com/lovyan03) さん   
 [M5Stack_JpgLoopAnime](https://github.com/lovyan03/M5Stack_JpgLoopAnime)  
