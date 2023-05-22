@@ -4,7 +4,7 @@
 
 ## デモ
 
-https://user-images.githubusercontent.com/26270227/236666846-6fb2ab43-3636-4a63-b334-7c0c7fed6d61.mp4
+https://github.com/GOB52/M5Stack_FlipBookSD/assets/26270227/3c894cd5-74e4-4016-9707-a489553fe9e6
 
 SINTEL (Trailer)
 [Creative Commons Attribution 3.0](http://creativecommons.org/licenses/by/3.0/)  
@@ -42,18 +42,18 @@ SD からパラパラ漫画のように画像と音声を再生することで�
 |Env|説明|
 |---|---|
 |release|基本設定|
-|release\_DisplayModule| [HDMI モジュール](https://shop.m5stack.com/products/display-module-13-2)対応 |
+|release\_DisplayModule| [ディスプレイモジュール](https://shop.m5stack.com/products/display-module-13-2)対応 |
 |release\_SdUpdater| SD-Updater 対応 |
-|release\_SdUpdater\_DisplayModule| HDMI モジュールと SD-Updater 対応|
+|release\_SdUpdater\_DisplayModule| ディスプレイモジュールと SD-Updater 対応|
 
 ### CoreS3 用
 |Env|説明|
 |---|---|
 |S3\_release|基本設定|
-|S3\_release_DisplayModule| HDMI モジュール 対応|
+|S3\_release_DisplayModule| ディスプレイモジュール 対応|
 
 ### 再生用サンプルデータ
-[sample_data.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11523705/sample_data.zip) をダウンロードして SD カードの **/gcf** へコピーしてください。
+[sample_data_002.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11531987/sample_data_002.zip) をダウンロードして SD カードの **/gcf** へコピーしてください。
 
 ## データの作成方法
 ### 必要なもの
@@ -70,9 +70,16 @@ SD からパラパラ漫画のように画像と音声を再生することで�
 1. 任意に作ったデータ作成用ディレクトリに動画データをコピーする
 1. 同ディレクトリに [conv.sh](conv.sh) と [gcf.py](gcf.py) をコピーする
 1. シェルスクリプトを次のように指定して実行する。  
-**bash conv.sh 動画ファイル名 フレームレート(数)**
-1. 動画ファイル名.フレームレート.gcf 動画ファイル名.wav が出力される
-1. 上記 2 つのファイルを SD カードの **/gcf** にコピーする。
+**bash conv.sh move_file_path frame_rate [ jpeg_maxumu,_size (無指定時は 7168) ]**
+
+|引数|必須?|説明|
+|---|---|---|
+|move_file_path|YES|元となる動画|
+|frame_rate|YES|出力されるデータの FPS (1 - 30)|
+|jpeg_maximum_size|NO|JPEG 1枚あたりの最大ファイルサイズ( 1024 - 10240)<br>大きいと品質が維持されやすいがクラッシュする可能性が高くなる(既知の問題参照)|
+
+4. 動画ファイル名.フレームレート.gcf 動画ファイル名.wav が出力される
+5. 上記 2 つのファイルを SD カードの **/gcf** にコピーする。
 
 例)
 ```
@@ -86,12 +93,18 @@ cp bar.24.gcf your_sd_card_path/gcf
 cp bar.wav your_sd_card_path/gcf
 ```
 
-#### シェルスクリプトで行っている事
-* 動画から指定されたフレームレートでJPEG画像を出力する。(出力ディレクトリ ./jpg を作成します)
-* 出力された JPEG ファイルのサイズが内部バッファを超えないように調整する。 (10KiB)
+### シェルスクリプトで行っている事
+* 動画から指定されたフレームレートでJPEG画像を出力する。  
+出力ディレクトリとして ./jpg+PID を作成します。これにより複数のターミナルで並行して変換できます。
+* 出力された JPEG ファイルのサイズが、指定サイズを超えていたら収まるように再コンバートする。
 * JPEG ファイルを結合して gcf ファイルを作成する。
 * 動画から音声データを出力し、平滑化する。
 
+#### FFmpeg のパラメータ
+```sh
+ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg
+```
+出力品質や、フィルター等、変更することでお好みのものにできます。元となる動画によって最適なパラメータは異なるので、FFmpeg の情報を参考にして行ってください。
 
 ### データの制限
 * wav データは 8KHz 符号なし 8bit mono で出力します  
@@ -101,11 +114,9 @@ CoreS3 では 8MB 利用可能なので、約 16 分が再生可能最大長と�
 
 * 画像サイズとフレームレート  
 動画から JPEG 化する際には幅 320p 高さはアスペクト比を維持した値で出力します。  
-現在の所 320 x 240 で 24 FPS 程度、 320 x 180 で 30 FPS 程度の再生が可能です。  
-画像サイズを変更したい場合は [conv.sh](conv.sh) の以下の部分の **scale=...** の部分を編集してください。
-```sh
-ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg
-```
+<ins>現在の所 320 x 240 で 24 FPS 程度、 320 x 180 で 30 FPS 程度の再生が可能です。</ins>  
+画像サイズを変更したい場合は [conv.sh](conv.sh) の FFmpeg へ与えているパラメータを変更してください。 **(scale=)**
+
 
 ## 既知の問題
 ### 再生時にリセットがかかる
@@ -116,7 +127,7 @@ ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg
 これは原因がわかっていません。
 
 #### プログラムでの回避策
-マルチコア再生をシングルコア再生に切り替えてみる。  
+* マルチコア再生をシングルコア再生に切り替える  
 main.cpp の該当箇所をシングルコア使用の物に切り替えます。  
 再生速度は落ちますが、バス競合を確実に避けるようになります。
 
@@ -134,18 +145,22 @@ static void loopRender()
 }
 ```
 #### データでの回避策
-再生フレームレートを減らしてみてください。 conv.sh へ与える引数で調整します。  
-または画像サイズを小さくするのも有効です。
-
+* 再生フレームレートを減らす
 ```
-bash conv.sh video.mp4 30 # If reset during playback
-bash conv.sh video.mp4 24 # Reduce frame rate
+bash conv.sh video.mp4 30 # 30 FPS
+bash conv.sh video.mp4 24 # Reduce to 24
 ```
+* JPEG ファイルサイズを小さくする 
+```
+bash conv.sh video.mp4 30      # 7168 as default
+bash conv.sh video.mp4 30 5120 # Reduce to 5120
+```
+* 画像サイズを小さくする
 ```sh
 conv.sh
 # ...
-#ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg # Width 320px standard
-ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
+#ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg  # 320 x n pixel
+ ffmpeg -i $1 -r $2 -vf scale=240:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg  # 240 x n pixel
 # ...
 ```
 
@@ -200,6 +215,10 @@ SD カードのファイルのオープンとシークにはそれなりの時�
 ### 余談の余談
 元々は ZIP ファイルを扱いたくて unzipLIB を色々試していました。使い方の習得を兼ねて画像ファイルをまとめた物をパラパラ漫画のように再生しようと思ったのが始まりです。  
 (結局 unzipLIB を使わない形になってしまったわけですが (´･ω･`) )
+
+### これって [MotionJPEG](https://ja.wikipedia.org/wiki/Motion_JPEG) とは違うの?
+定義によればこれも MJPEG と呼んで差し支えないようです。しかし MJPEG はファイルフォーマットとしての統一形式はないので、このアプリケーションはあくまで gcf 形式再生機です。
+
 
 ## 付録
 * src/gob_jpg_sprite.hpp
