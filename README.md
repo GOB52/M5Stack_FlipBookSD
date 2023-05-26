@@ -102,7 +102,7 @@ cp bar.wav your_sd_card_path/gcf
 
 #### FFmpeg のパラメータ
 ```sh
-ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg
+ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 ```
 出力品質や、フィルター等、変更することでお好みのものにできます。元となる動画によって最適なパラメータは異なるので、FFmpeg の情報を参考にして行ってください。
 
@@ -159,8 +159,8 @@ bash conv.sh video.mp4 30 5120 # Reduce to 5120
 ```sh
 conv.sh
 # ...
-#ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg  # 320 x n pixel
- ffmpeg -i $1 -r $2 -vf scale=240:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg  # 240 x n pixel
+#ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg  # 320 x n pixel
+ ffmpeg -i $1 -r $2 -vf scale=240:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg  # 240 x n pixel
 # ...
 ```
 

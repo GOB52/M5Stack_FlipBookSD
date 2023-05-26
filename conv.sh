@@ -47,7 +47,7 @@ fi
 # Output JPEG images from movie.
 rm -rf jpg$$
 mkdir jpg$$
-ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg
+ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 
 # Check file size and re-convert if oversized
 for fname in jpg$$/*.jpg

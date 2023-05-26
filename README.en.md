@@ -105,7 +105,7 @@ Create an output directory of . /jpg+PID as the output directory. This allows mu
 
 #### Parameters of FFmpeg
 ```sh
-ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg
+ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 ```
 You can change the output quality, filters, etc. to your liking. The best parameters depend on the source video, so please refer to FFmpeg's information.
 
@@ -162,8 +162,8 @@ bash conv.sh video.mp4 30 5120 # Reduce to 5120
 ```sh
 conv.sh
 # ...
-#ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg  # 320 x n pixel
- ffmpeg -i $1 -r $2 -vf scale=240:-1,dejudder -qmin 1 -q 1 jpg$$/%05d.jpg  # 240 x n pixel
+#ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg  # 320 x n pixel
+ ffmpeg -i $1 -r $2 -vf scale=240:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg  # 240 x n pixel
 # ...
 ```
 
