@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Make data for M5Stack_JpgLoopAnimaSD
+# Make GMV file for M5Stack_FlipBookSD
 #
 # Author: GOB https://twitter.com/gob_52_gob
 #
@@ -8,11 +8,7 @@
 #  FFmpeg,
 #  convert (ImageMagick)
 #  ffmpeg-normalize
-#  gcf.py (Written by GOB)
-#
-# Usage: conv_q.sh moviefile framerate(number) quality
-# ex) conv_q.sh foo.mp4 24 1
-#     output foo.24.gcf and foo.24.wav
+#  gmv.py (Written by GOB)
 #
 
 # Check arguments
@@ -58,14 +54,22 @@ do
     fi
 done
 
-# Combine JPEG files
-#python gcf.py -v jpg ${1%.*}.$2.gcf
-python gcf.py jpg$$ ${1%.*}.$2.gcf
 # Make 8bit 8K mono wav and normalize
-ffmpeg -i $1 -ac 1 -ar 8000 -acodec pcm_u8 -y ${1%.*}.$2.wav
-ffmpeg-normalize ${1%.*}.$2.wav --audio-codec pcm_u8 --sample-rate 8000 -f -o ${1%.*}.$2.wav
+ffmpeg -i $1 -ac 1 -ar 8000 -acodec pcm_u8 -y ${1%.*}.wav
+ffmpeg-normalize ${1%.*}.wav --audio-codec pcm_u8 --sample-rate 8000 -f -o ${1%.*}.wav
+# Make 16bit 22.5K streo wav and normalize
+#ffmpeg -i $1 -ac 2 -ar 22050 -acodec pcm_s16le -y ${1%.*}.wav
+#ffmpeg-normalize ${1%.*}.wav --audio-codec pcm_s16le --sample-rate 22050 -f -o ${1%.*}.wav
+
+# Combine JPEG files and wave file
+python gmv.py jpg$$ ${1%.*}.wav $2 ${1%.*}.gmv
 
 #Cleanup
 rm -rf jpg$$
+rm ${1%.*}.wav
 exit 0
+
+
+
+
 

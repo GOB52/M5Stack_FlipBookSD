@@ -3,7 +3,7 @@
 #
 # //GCF HEADER
 # uint32_t signature; // "GCF0" 0x30464347 (little endian)
-# uint32_t files; // Number of files stored
+# uint32_t blocks; // Number of blocks
 # uint32_t reserved[2]; // Reserved
 # //GCF FILES
 # uint32_t size0; // File size 0
@@ -27,14 +27,14 @@ class GCF0(LittleEndianStructure):
     _pack_ = 2
     _fields_ = [
         ('signature', c_uint32),
-        ('files', c_uint32),
+        ('blocks', c_uint32),
         ('reserved0', c_uint32),
         ('reserved1', c_uint32),
     ]
 
-    def __init__(self, files = 0):
+    def __init__(self, blocks = 0):
         self.signature = 0x30464347 # GCF0
-        self.files = files
+        self.blocks = blocks
         self.reserved0 = self.reserved1 = 0
 
 
