@@ -58,7 +58,12 @@ float fps{};
 void sleepUntil(const std::chrono::time_point<ESP32Clock, UpdateDuration>& absTime)
 {
     auto us = std::chrono::duration_cast<std::chrono::microseconds>(absTime - ESP32Clock::now()).count();
-    delay(us >= 0 ? us/1000 : 0); // ms
+    //delay(us >= 0 ? us/1000 : 0); // ms
+    if(us > 1000)
+    {
+        auto tc = xTaskGetTickCount();
+        vTaskDelayUntil(&tc, us/1000/portTICK_PERIOD_MS);
+    }
     //auto at = std::chrono::time_point_cast<ESP32Clock::duration>(absTime);
     //while(ESP32Clock::now() < at) { taskYIELD(); }
     while(std::chrono::time_point_cast<UpdateDuration>(ESP32Clock::now()) < absTime) { taskYIELD(); }
@@ -217,7 +222,7 @@ void setup()
     cfg.module_display.logical_height = 240;
 #endif
     M5.begin(cfg);
-    M5.Log.setLogLevel(m5::log_target_display, (esp_log_level_t)-1); // Disable output to display
+    M5.Log.setEnableColor(m5::log_target_t::log_target_serial, false);
     display.clear(TFT_DARKGRAY);
 
     // Speaker settings
@@ -267,7 +272,7 @@ void setup()
     M5.Speaker.config(spk_cfg);
 
     M5_LOGI("Output to %s", primaryDisplay ? "Display" : "Lcd");
-    if(M5.getBoard() == m5::board_t::board_M5Stack) { volume = 160; }
+    if(M5.getBoard() == m5::board_t::board_M5Stack) { volume = 144; }
     if(primaryDisplay) { volume = 128; }
     M5.Speaker.setVolume(volume);
     
@@ -298,8 +303,14 @@ void setup()
     unfiedButton.begin(&display);
 
     // file list
+#if defined(FBSD_SUPPORT_GCF)
+    // Support old and new format
     list.make("/gcf", "gcf");
     list.append("gmv");
+#else
+    // Only new format
+    list.make("/gcf", "gmv");
+#endif
     
     // Allocate buffer
     for(auto& buf : buffers)
