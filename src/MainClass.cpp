@@ -216,7 +216,8 @@ uint32_t MainClass::jpgWriteRow(TJpgD *jdec, uint32_t y, uint32_t h) {
     int_fast16_t bottom = y + h;
     int_fast16_t yy = y;
     
-    if(bottom < oy || y >= oy + me->_lcd_height) { return 1; }
+    if(bottom < oy) { return 1; /* continue */ }
+    if(y >= oy + me->_lcd_height) { return 0; /* cutoff */}
 
     //M5_LOGI("y:%d, h:%d", y, h);
 

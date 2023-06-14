@@ -4,7 +4,7 @@
 
 ## デモ
 
-https://user-images.githubusercontent.com/26270227/236666846-6fb2ab43-3636-4a63-b334-7c0c7fed6d61.mp4
+https://github.com/GOB52/M5Stack_FlipBookSD/assets/26270227/3c894cd5-74e4-4016-9707-a489553fe9e6
 
 SINTEL (Trailer)
 [Creative Commons Attribution 3.0](http://creativecommons.org/licenses/by/3.0/)  
@@ -12,19 +12,17 @@ SINTEL (Trailer)
 再生の為にデータ形式を改変しています。
 
 ## 概要
+動画ファイルを専用の形式 (gmv) へ変換したファイルを SD からストリーミング再生するアプリケーションです。  
+マルチコアを使用して DMA による描画と、音声再生を行っています。  
+旧形式である gcf + wav 再生可能です(但し PSRAM 非搭載機では音声再生制限あり)
 
-動画ファイルから作成された分割 [JPEG](https://ja.wikipedia.org/wiki/JPEG) ファイルを [gcf file](#gcfファイルフォーマット)(オリジナル形式) でまとめたファイルと Wave ファイルを SD カードから再生します。  
-SD からパラパラ漫画のように画像と音声を再生することで、動画再生に近い事をするアプリケーションです。  
-マルチコアを使用して DMA による描画と、音声再生を行っています。
 
 ## 対象デバイス
 依存するライブラリが動作して、SDカードを搭載している物。
-* M5Stack Basic 2.6
+* M5Stack Basic 2.6 以降
 * M5Stack Gray
 * M5Stack Core2
 * M5Stack CoreS3
-
-但し PSRAM を積んでいない Basic と Gray では音声再生可能な時間に大幅な制限あり。
 
 ## 依存ライブラリ
 * [M5Unified](https://github.com/m5stack/M5Unified)
@@ -42,18 +40,18 @@ SD からパラパラ漫画のように画像と音声を再生することで�
 |Env|説明|
 |---|---|
 |release|基本設定|
-|release\_DisplayModule| [HDMI モジュール](https://shop.m5stack.com/products/display-module-13-2)対応 |
+|release\_DisplayModule| [ディスプレイモジュール](https://shop.m5stack.com/products/display-module-13-2)対応 |
 |release\_SdUpdater| SD-Updater 対応 |
-|release\_SdUpdater\_DisplayModule| HDMI モジュールと SD-Updater 対応|
+|release\_SdUpdater\_DisplayModule| ディスプレイモジュールと SD-Updater 対応|
 
 ### CoreS3 用
 |Env|説明|
 |---|---|
 |S3\_release|基本設定|
-|S3\_release_DisplayModule| HDMI モジュール 対応|
+|S3\_release_DisplayModule| ディスプレイモジュール 対応|
 
 ### 再生用サンプルデータ
-[sample_data.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11523705/sample_data.zip) をダウンロードして SD カードの **/gcf** へコピーしてください。
+[sample_003.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11746898/sample_003.zip) をダウンロードして SD カードの **/gcf** へコピーしてください。
 
 ## データの作成方法
 ### 必要なもの
@@ -68,55 +66,101 @@ SD からパラパラ漫画のように画像と音声を再生することで�
 データはターミナル上で作成します。  
 動画データは FFmpeg で処理できる物であればフォーマットは問いません。
 1. 任意に作ったデータ作成用ディレクトリに動画データをコピーする
-1. 同ディレクトリに [conv.sh](conv.sh) と [gcf.py](gcf.py) をコピーする
+1. 同ディレクトリに [conv.sh](script/conv.sh) と [gmv.py](script/gmv.py) をコピーする
 1. シェルスクリプトを次のように指定して実行する。  
-**bash conv.sh 動画ファイル名 フレームレート(数)**
-1. 動画ファイル名.フレームレート.gcf 動画ファイル名.wav が出力される
-1. 上記 2 つのファイルを SD カードの **/gcf** にコピーする。
+**bash conv.sh move_file_path frame_rate [ jpeg_maxumu,_size (無指定時は 7168) ]**
+
+|引数|必須?|説明|
+|---|---|---|
+|move_file_path|YES|元となる動画|
+|frame_rate|YES|出力されるデータの FPS (1 - 30)|
+|jpeg_maximum_size|NO|JPEG 1枚あたりの最大ファイルサイズ( 1024 - 10240)<br>大きいと品質が維持されやすいがクラッシュする可能性が高くなる(既知の問題参照)|
+
+4. 動画ファイル名.gmv が出力される。
+5. gmv ファイルを SD カードの **/gcf** にコピーする。
 
 例)
-```
+```sh
 mkdir foo
 cp bar.mp4 foo
-cp conv.sh foo
-cp gcf.py foo
+cp script/conv.sh foo
+cp script/gcf.py foo
 cd foo
 bash conv.sh bar.mp4 24
-cp bar.24.gcf your_sd_card_path/gcf
-cp bar.wav your_sd_card_path/gcf
+cp bar.gmv your_sd_card_path/gcf
 ```
 
-#### シェルスクリプトで行っている事
-* 動画から指定されたフレームレートでJPEG画像を出力する。(出力ディレクトリ ./jpg を作成します)
-* 出力された JPEG ファイルのサイズが内部バッファを超えないように調整する。 (10KiB)
-* JPEG ファイルを結合して gcf ファイルを作成する。
+### シェルスクリプトで行っている事
+* 動画から指定されたフレームレートでJPEG画像を出力する。  
+出力ディレクトリとして ./jpg+PID を作成します。これにより複数のターミナルで並行して変換できます。
+* 出力された JPEG ファイルのサイズが、指定サイズを超えていたら収まるように再コンバートする。
 * 動画から音声データを出力し、平滑化する。
+* gmv.py で画像と音声を合成した専用ファイルを作成する。
 
+#### FFmpeg のパラメータ
+```sh
+ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
+```
+出力品質や、フィルター等、変更することでお好みのものにできます。元となる動画によって最適なパラメータは異なるので、FFmpeg の情報を参考にして行ってください。
 
 ### データの制限
-* wav データは 8KHz 符号なし 8bit mono で出力します  
-再生時はメモリ上に全て読み込んでから再生するので、 足りない場合は音は鳴りません。PSRAM がない機種では短い物でないと鳴らないでしょう。  
-Core2 では PSRAM 通常使用可能なサイズが 4MiB なので、約8分30秒が再生可能最大長と思われます。  
-CoreS3 では 8MB 利用可能なので、約 16 分が再生可能最大長と思われます。
+* wav データの品質 (8KHz 符号なし 8bit mono)  
+処理負荷軽減の為、音声データの品質は下げています。  
+スクリプトを編集して品質を上げることは可能ですが、処理負荷によってクラッシュする場合が生じるかもしれません。(既知の問題参照)
 
 * 画像サイズとフレームレート  
 動画から JPEG 化する際には幅 320p 高さはアスペクト比を維持した値で出力します。  
-現在の所 320 x 240 で 24 FPS 程度、 320 x 180 で 30 FPS 程度の再生が可能です。  
-画像サイズを変更したい場合は [conv.sh](conv.sh) の以下の部分の **scale=...** の部分を編集してください。
-```sh
-ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg
-```
+<ins>現在の所 320 x 240 で 24 FPS 程度、 320 x 180 で 30 FPS 程度の再生が可能です。</ins>  
+画像サイズを変更したい場合は [conv.sh](conv.sh) の FFmpeg へ与えているパラメータを変更してください。 **(scale=)**
+
 
 ## 既知の問題
 ### 再生時にリセットがかかる
 実行中にリセットがかかった場合 Serial モニタに assert で引っ掛かった旨が表示されているはずです。  
-原因は描画が所定の時間内に終わらず、 SD と Lcd のバスが衝突した事による物です。
+原因は描画が所定の時間内に終わらず、 SD と Lcd のバスが衝突した事による物です。  
+動画の特定箇所で発生する場合はデータ側を修正することで回避することができます。
 
 またごく稀に SD からの読み込みに時間がかかる時があり、それによって上記と同様にリセットがかかる場合があります。  
-これは原因がわかっていません。
+これは原因がわかっていません。 SD カードの相性かフォーマット状態に問題があるかもしれません。
 
-#### プログラムでの回避策
-マルチコア再生をシングルコア再生に切り替えてみる。  
+https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
+
+>OS utilities should not be used for formatting SD cards. FAT16/FAT32 has lots of options for file system layout. In addition to the cluster size there are options for aligning file structures.  
+>The SD Association has a standard layout for each size SD card. Cards are designed to optimize performance for the standard layout. For example, flash chip boundaries are aligned with file system structures.  
+>My SdFormatter example produces the standard layout. On a PC use the SD Association Formatter.  
+>You should not be getting errors due to the format. The correct format will only enhance performance, not reduce errors.  
+>I rarely see the type errors you are having. Most users either have solid errors or no errors.  
+>I have seen this type error when another SPI device interferes with the SD or when there are noisy or poor SPI signals.  
+
+>[意訳]  
+>SD カードのフォーマットに、各 OS のユーティリティを使わないでください。 FAT16/32 のファイルシステムレイアウトは多岐にわたっており、様々なオプションが存在します。  
+>SD アソシエーションによって各サイズの SD カードに対して標準的なレイアウトが制定されています。カードは標準的なレイアウトに対して最適化されています。例えばフラッシュチップの境界はファイルシステムの構造に合わせて整列されます。  
+>SD Formater サンプル、または [SD Association Formatter](https://www.sdcard.org/downloads/) を使用することで標準レイアウトが生成されます。  
+>(以下略)
+
+
+#### データでの回避策
+* 再生フレームレートを減らす
+```sh
+bash conv.sh video.mp4 30 # 30 FPS
+bash conv.sh video.mp4 24 # Reduce to 24
+```
+* JPEG ファイルサイズを小さくする 
+```sh
+bash conv.sh video.mp4 30      # 7168 as default
+bash conv.sh video.mp4 30 5120 # Reduce to 5120
+```
+* 画像サイズを小さくする
+```sh
+conv.sh
+# ...
+#ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg  # 320 x n pixel
+ ffmpeg -i $1 -r $2 -vf scale=240:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg  # 240 x n pixel
+# ...
+```
+
+#### プログラムでの回避策(非推奨)
+* マルチコア再生をシングルコア再生に切り替える  
 main.cpp の該当箇所をシングルコア使用の物に切り替えます。  
 再生速度は落ちますが、バス競合を確実に避けるようになります。
 
@@ -127,28 +171,12 @@ static void loopRender()
     // ...
 	{
         ScopedProfile(drawCycle);
-        //mainClass.drawJpg(buffer, JPG_BUFFER_SIZE); // Process on multiple cores
-        mainClass.drawJpg(buffer, JPG_BUFFER_SIZE, false); // Process on single core.
+        //mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE); // Process on multiple cores
+        mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE, false); // Process on single core. Try it, if If assert occurs on xQueueSend call. (However, FPS will be reduced)
 	}
     // ...
 }
 ```
-#### データでの回避策
-再生フレームレートを減らしてみてください。 conv.sh へ与える引数で調整します。  
-または画像サイズを小さくするのも有効です。
-
-```
-bash conv.sh video.mp4 30 # If reset during playback
-bash conv.sh video.mp4 24 # Reduce frame rate
-```
-```sh
-conv.sh
-# ...
-#ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg # Width 320px standard
-ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
-# ...
-```
-
 ## 操作方法
 ### メニュー
 |ボタン|説明|
@@ -166,25 +194,17 @@ ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
 |Bボタンクリック|画面真ん中 1/3|再生停止してメニューへ|
 |Cボタン押下|画面右 1/3|音量上げる|
 
-## gcfファイルフォーマット
-拡張子は **G**ob **C**ombined **F**iles の略称です。  
-以下の模式のように、ヘッダに続いてサイズと実データが並んでいるだけの単純なファイルです。  
-先頭からサイズ分だけ読み続けていくだけで一切明示的なシークを必要としません。
+## 旧形式 (gcf + wav) からの変換
+現在の所、旧形式(gcf + wav) も再生できますが、
+変換用 Pyhton スクリプト [gcf_to_gmv.py](script/gcf_to_gmv.py) と、カレントディレクトリのファイル群の変換の為のシェルスクリプト [convert_gcf_to_gmv.sh](script/convert_gcf_to_gmv.sh) を用意しました。
 
-```cpp
-//GCF HEADER
-uint32_t signature; // "GCF0" 0x30464347 (リトルエンディアン)
-uint32_t files; // 格納されているファイル数
-uint32_t reserved[2]; // 予約
-//GCF FILES
-uint32_t size0; // ファイルサイズ 0
-uint8_t data0[size0]; // 無圧縮データ 0
-uint32_t size1; // ファイルサイズ 1
-uint8_t data1[size1]; // 無圧縮データ 1
-.
-.
-.
-uint32_t sizen{0xFFFFFFFF}; // 終端
+```sh
+# gcf_dir has gcf + wav files
+cp script/gcf_to_gmv.py gcf_dir
+cp script/convert_gcf_to_gmv.sh gcf_dir
+cd gcf_dir
+bash convert_gcf_to_gmv.sh
+cp *.gmv your_sd_card_path/gcf
 ```
 
 ## 余談
@@ -200,6 +220,9 @@ SD カードのファイルのオープンとシークにはそれなりの時�
 ### 余談の余談
 元々は ZIP ファイルを扱いたくて unzipLIB を色々試していました。使い方の習得を兼ねて画像ファイルをまとめた物をパラパラ漫画のように再生しようと思ったのが始まりです。  
 (結局 unzipLIB を使わない形になってしまったわけですが (´･ω･`) )
+
+### これって [MotionJPEG](https://ja.wikipedia.org/wiki/Motion_JPEG) とは違うの?
+定義によればこれも MJPEG と呼んで差し支えないようです。しかし MJPEG はファイルフォーマットとしての統一形式はないので、このアプリケーションはあくまで gmv 形式再生機です。
 
 ## 付録
 * src/gob_jpg_sprite.hpp
@@ -222,7 +245,7 @@ TJepgDec の作者
 
 当アプリケーションの母体となった物です。TJpegDec を使用して画面に DMA 描画するロジックを拝借しました。  
 技術的なアドバイスもたくさんいただきました。  
-M5Unfied, M5GFX の作者でもあります。
+M5Unified, M5GFX の作者でもあります。
 * [Lovyan03](https://twitter.com/lovyan03) さん   
 [M5Stack_JpgLoopAnime](https://github.com/lovyan03/M5Stack_JpgLoopAnime)  
 [ESP32_ScreenShotReceiver](https://github.com/lovyan03/ESP32_ScreenShotReceiver)

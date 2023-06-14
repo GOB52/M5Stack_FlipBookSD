@@ -1,3 +1,4 @@
+// Make playback file list
 #ifndef FILE_LIST_HPP
 #define FILE_LIST_HPP
 
@@ -12,7 +13,8 @@ class FileList
     FileList();
 
     uint32_t make(const char* base, const char* ext = "gcf");
-
+    uint32_t append(const char* ext = "gcf");
+    
     inline int32_t current() const { return _cur; }
     inline int32_t files() const { return _files; }
 
@@ -40,7 +42,7 @@ class FileList
     static String getExt(const String& path);
     
   protected:
-    String _base{};
+    String _base{"/"};
     std::vector<String> _list{};
     int32_t _cur{};
     int32_t _files{};

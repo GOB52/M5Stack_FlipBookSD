@@ -1,4 +1,4 @@
-
+// Make playback file list
 #include <SdFat.h>
 #include <M5Unified.h>
 #include "file_list.hpp"
@@ -40,15 +40,40 @@ uint32_t FileList::make(const char* base, const char* ext)
 
         char path[256];
         f.getName(path, sizeof(path));
-        if(path[0] == '.' || getExt(path) != "gcf") { continue; }
+        if(path[0] == '.' || getExt(path) != ext) { continue; }
 
-        M5_LOGI("list:[%s]", path);
+        M5_LOGD("list:[%s]", path);
         _list.emplace_back(path);
         ++_files;
         f.close();
     }
     sort();
     return _files;
+}
+
+uint32_t FileList::append(const char* ext)
+{
+    auto psize = _files;
+
+    FsFile dir;
+    if(!dir.open(_base.c_str())) { return 0; }
+
+    FsFile f;
+    while(f.openNext(&dir, O_RDONLY))
+    {
+        if(f.isDir()) { continue; }
+
+        char path[256];
+        f.getName(path, sizeof(path));
+        if(path[0] == '.' || getExt(path) != ext) { continue; }
+
+        M5_LOGD("list:[%s]", path);
+        _list.emplace_back(path);
+        ++_files;
+        f.close();
+    }
+    sort();
+    return _files - psize;
 }
 
 void FileList::shuffle()

@@ -4,7 +4,7 @@
 
 ## Demo
 
-https://user-images.githubusercontent.com/26270227/236666846-6fb2ab43-3636-4a63-b334-7c0c7fed6d61.mp4
+https://github.com/GOB52/M5Stack_FlipBookSD/assets/26270227/3c894cd5-74e4-4016-9707-a489553fe9e6
 
 SINTEL (Trailer)
 [Creative Commons Attribution 3.0](http://creativecommons.org/licenses/by/3.0/)  
@@ -13,14 +13,14 @@ The data format is modified for playback.
 
 
 ## Overview
-This application plays [gcf file](#gcf-file-format)(original format) that are combined [JPEG](https://en.wikipedia.org/wiki/JPEG) files splited from video file, along with Wave file.  
-This application works like a video playback by playing back the combined images in SD with sound.  
-It uses multi-cores to perform rendering with DMA and audio playback.
+This application streams video files converted to the dedicated format gmv from SD.  
+It uses multi-cores to perform rendering with DMA and audio playback.  
+Old format (gcf + wav) can be played back (however, audio playback is restricted on machines without PSRAM).
 
 
 ## Target devices
 It must be able to run the libraries it depends on and have an SD card.
-* M5Stack Basic 2.6
+* M5Stack Basic 2.6 or later
 * M5Stack Gray
 * M5Stack Core2 
 * M5Stack CoreS3
@@ -43,18 +43,18 @@ However, Basic and Gray, which do not have PSRAM, have significant limitations o
 |Env|Description|
 |---|---|
 |release|Basic Settings|
-|release\_DisplayModule| Support [HDMI Module](https://shop.m5stack.com/products/display-module-13-2)|
+|release\_DisplayModule| Support [DisplayModule](https://shop.m5stack.com/products/display-module-13-2)|
 |release\_SdUpdater| Support SD-Updater |
-|release\_SdUpdater\_DisplayModule| Support HDMI Module and SD-Updater |
+|release\_SdUpdater\_DisplayModule| Support DisplayModule and SD-Updater |
 
 ### For CoreS3
 |Env|Description|
 |---|---|
 |S3\_release|Basic Settings|
-|S3\_release_DisplayModule| Support SD-Updater |
+|S3\_release_DisplayModule| Support DisplayModule |
 
 ### Sample data for playback
-Download [sample_data.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11523705/sample_data.zip) and copy it to **/gcf** on your SD card.
+Download [sample_003.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11746898/sample_003.zip) and copy it to **/gcf** on your SD card.
 
 
 ## How to make data
@@ -71,55 +71,93 @@ Making data on terminal.
 Video data can be in any format that can be processed by FFmpeg.
 
 1. Copy video data to an arbitrarily created directory.
-1. Copy [conv.sh](conv.sh) and [gcf.py](gcf.py) to the same directory.
-1. Execute the shell script as follows
-**bash conv.sh videofilename framerate(number)**  
-1. The files that named "videofilename.framerate.gcf" and "videofilename.wav" output to same directory.
-1. Copy the above two files to **/gcf** on the SD card.
+1. Copy [conv.sh](script/conv.sh) and [gmv.py](script/gmv.py) to the same directory.
+1. Execute the shell script as follows  
+**bash conv.sh move_file_name frame_rate [ jpeg_maxumu,_size (Default if not specified is 7168) ]**
+
+| Argument | Required?| Description |
+|---|---|---|
+|move_file_path|YES|Source movie|
+|frame_rate|YES|Output frame rate (1 - 30)|
+|jpeg_maximum_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger size helps maintain quality but increases the likelihood of crashes (see Known Issues)|
+
+4. The files that named "videofilename.gmv" output to same directory.
+5. Copy the above files to **/gcf** on the SD card.
 
 e.g.)
-```
+```sh
 mkdir foo
 cp bar.mp4 foo
-cp conv.sh foo
-cp gcf.py foo
+cp script/conv.sh foo
+cp script/gcf.py foo
 cd foo
 bash conv.sh bar.mp4 24
-cp bar.24.gcf your_sd_card_path/gcf
-cp bar.wav your_sd_card_path/gcf
+cp bar.gmv your_sd_card_path/gcf
 ```
 
-#### Processes performed by shell scripts
-* Output JPEG images from video at the specified frame rate.(Create output directory . /jpg is created)
-* Adjust the size of the output JPEG file so that it does not exceed the internal buffer. (10KiB)
-* Combine JPEG files to create a gcf file.
+### Processes performed by shell scripts
+* Output JPEG images from video at the specified frame rate.  
+Create an output directory of . /jpg+PID as the output directory. This allows multiple terminals to convert in parallel.
+* If the size of the output JPEG file exceeds the specified size, reconvert it to fit.
 * Output audio data from the video and normalize it out.
+* gmv.py creates a dedicated file containing images and audio.
+
+#### Parameters of FFmpeg
+```sh
+ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
+```
+You can change the output quality, filters, etc. to your liking. The best parameters depend on the source video, so please refer to FFmpeg's information.
 
 ### Data restrictions
-* Wav data is output in 8KHz, unsigned 8bit, mono format.
-If there is not enough memory, no sound will be played. For device without PSRAM, it would have to be a short one to make it sound.  
-On Core2, PSRAM normally has a usable size of 4 MiB, so approximately about 8 minutes and 30 seconds seems to be the maximum playback length.  
-On Core3 that can use 8MB,approximately 16 minutes is considered the maximum playback length.
+* wav data quality (8KHz unsigned 8bit mono)  
+The quality of the audio data is lowered to reduce the processing load.  
+It is possible to edit the script to improve the quality, but the processing load may cause crashes. (See Known Issues).
 
 * Image size and frame rate
 When converting a video to JPEG, the width is 320px and the height is a value that maintains the aspect ratio.  
-Currently, 320 x 240 can be played back at about 24 FPS, and 320 x 180 at about 30 FPS.  
-To change the image size, edit the "scale=.... in conv.sh.
-```sh
-ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg
-```
+<ins>Currently, 320 x 240 can be played back at about 24 FPS, and 320 x 180 at about 30 FPS.</ins>  
+To change the image size, edit the parameter for FFmpeg in conv.sh. **(scale=)**
 
 ## Known issues
 ### Reset during playback
 If a reset occurs during execution, the Serial monitor should display a message that the assertion was caught.  
-The cause is that drawing did not finish within the specified time, and the SD and Lcd buses collided.
+The cause is that drawing did not finish within the specified time, and the SD and Lcd buses collided.  
+If this occurs at a specific point in the video, it can be avoided by modifying the data side.
 
 Also, in rare cases, it may take a long time to read from SD, which may cause a reset as described above.  
-The cause of this is not known.
+The cause of this is not known.There may be SD card compatibility issues.
 
-#### Workaround by the program
-How to deal with it in the program
-Switch multi-core playback to single-core playback.  
+https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
+
+>OS utilities should not be used for formatting SD cards. FAT16/FAT32 has lots of options for file system layout. In addition to the cluster size there are options for aligning file structures.  
+>The SD Association has a standard layout for each size SD card. Cards are designed to optimize performance for the standard layout. For example, flash chip boundaries are aligned with file system structures.  
+>My SdFormatter example produces the standard layout. On a PC use the [SD Association Formatter](https://www.sdcard.org/downloads/).  
+>You should not be getting errors due to the format. The correct format will only enhance performance, not reduce errors.  
+>I rarely see the type errors you are having. Most users either have solid errors or no errors.  
+>I have seen this type error when another SPI device interferes with the SD or when there are noisy or poor SPI signals.  
+
+#### Workaround by the data
+* Reduce playback frame rate
+```sh
+bash conv.sh video.mp4 30 # 30 FPS
+bash conv.sh video.mp4 24 # Reduce to 24
+```
+* Reduce JPEG file size 
+```sh
+bash conv.sh video.mp4 30      # 7168 as default
+bash conv.sh video.mp4 30 5120 # Reduce to 5120
+```
+* Reduce image size
+```sh
+conv.sh
+# ...
+#ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg  # 320 x n pixel
+ ffmpeg -i $1 -r $2 -vf scale=240:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg  # 240 x n pixel
+# ...
+```
+
+#### Workaround by the program (deprecated)
+* Switch multi-core playback to single-core playback.  
 Switch the corresponding section of main.cpp to the one using a single core.  
 Playback speed will be reduced, but bus contention will be reliably avoided.
 
@@ -130,27 +168,11 @@ static void loopRender()
     // ...
 	{
         ScopedProfile(drawCycle);
-        //mainClass.drawJpg(buffer, JPG_BUFFER_SIZE); // Process on multiple cores
-        mainClass.drawJpg(buffer, JPG_BUFFER_SIZE, false); // Process on single core.
+        //mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE); // Process on multiple cores
+        mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE, false); // Process on single core. Try it, if If assert occurs on xQueueSend call. (However, FPS will be reduced)
 	}
     // ...
 }
-```
-
-#### Workaround by the data
-Try reducing the playback frame rate. You can adjust this with the arguments you give to conv.sh.  
-Or you can reduce the image size.
-
-```
-bash conv.sh video.mp4 30 # If reset during playback
-bash conv.sh video.mp4 24 # Reduce frame rate
-```
-```sh
-conv.sh
-# ...
-#ffmpeg -i $1 -r $2 -vf scale=320:-1 jpg/%05d.jpg # Width 320px standard
-ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
-# ...
 ```
 
 ## How to operate
@@ -170,25 +192,18 @@ ffmpeg -i $1 -r $2 -vf scale=240:-1 jpg/%05d.jpg  # Reduce width to 240px
 |Click B| Click center 1/3 of the screen | Stop payback and back to menu|
 |Press C| Press right 1/3 of the screen | Increase sound volume|
 
-## gcf file format
-The extension stands for **G**ob **C**ombined **F**iles.  
-As shown in the schematic below, this is a simple file with a header followed by the size and actual data.  
-No explicit seek is required.
 
-```cpp
-//GCF HEADER
-uint32_t signature; // "GCF0" 0x30464347 (little endian)
-uint32_t files; // Number of files stored
-uint32_t reserved[2]; // Reserved
-//GCF FILES
-uint32_t size0; // File size 0
-uint8_t data0[size0]; // File data 0
-uint32_t size1; // File size 1
-uint8_t data1[size1]; // File data 1
-.
-.
-.
-uint32_t sizen{0xFFFFFFFF}; // Terminator
+## Conversion from old format (gcf + wav)
+Currently, the old format (gcf + wav) can be played,
+Pyhton script for conversion [gcf\_to\_gmv.py](script/gcf_to_gmv.py) and shell script for conversion of files in the current directory [convert\_gcf\_to\_gmv.sh](script/convert_gcf_to_gmv.sh) for converting files in the current directory.
+
+```sh
+# gcf_dir has gcf + wav files
+cp script/gcf_to_gmv.py gcf_dir
+cp script/convert_gcf_to_gmv.sh gcf_dir
+cd gcf_dir
+bash convert_gcf_to_gmv.sh
+cp *.gmv your_sd_card_path/gcf
 ```
 
 ## Digression
@@ -204,6 +219,9 @@ The read processing time per image has gone from tens of ms for each file opened
 ### Digression of the digression
 I was experimenting with unzipLIB because I wanted to handle ZIP files. I wanted to learn how to use it, and I wanted to play back a collection of image files like a flip book.  
 (In the end, I ended up not using unzipLIB (´･ω･`) )
+
+### Is this different from [MotionJPEG](https://en.wikipedia.org/wiki/Motion_JPEG)?
+According to the definition, this can be called MJPEG. However, MJPEG is not a unified file format, so this application is only a gmv format player.
 
 ## Appendix
 * src/gob\_jpg\_sprite.hpp
