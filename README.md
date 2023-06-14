@@ -19,7 +19,7 @@ SINTEL (Trailer)
 
 ## 対象デバイス
 依存するライブラリが動作して、SDカードを搭載している物。
-* M5Stack Basic 2.6
+* M5Stack Basic 2.6 以降
 * M5Stack Gray
 * M5Stack Core2
 * M5Stack CoreS3
@@ -121,7 +121,22 @@ ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 動画の特定箇所で発生する場合はデータ側を修正することで回避することができます。
 
 またごく稀に SD からの読み込みに時間がかかる時があり、それによって上記と同様にリセットがかかる場合があります。  
-これは原因がわかっていません。
+これは原因がわかっていません。 SD カードの相性かフォーマット状態に問題があるかもしれません。
+
+https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
+
+>OS utilities should not be used for formatting SD cards. FAT16/FAT32 has lots of options for file system layout. In addition to the cluster size there are options for aligning file structures.  
+>The SD Association has a standard layout for each size SD card. Cards are designed to optimize performance for the standard layout. For example, flash chip boundaries are aligned with file system structures.  
+>My SdFormatter example produces the standard layout. On a PC use the SD Association Formatter.  
+>You should not be getting errors due to the format. The correct format will only enhance performance, not reduce errors.  
+>I rarely see the type errors you are having. Most users either have solid errors or no errors.  
+>I have seen this type error when another SPI device interferes with the SD or when there are noisy or poor SPI signals.  
+
+>[意訳]  
+>SD カードのフォーマットに、各 OS のユーティリティを使わないでください。 FAT16/32 のファイルシステムレイアウトは多岐にわたっており、様々なオプションが存在します。  
+>SD アソシエーションによって各サイズの SD カードに対して標準的なレイアウトが制定されています。カードは標準的なレイアウトに対して最適化されています。例えばフラッシュチップの境界はファイルシステムの構造に合わせて整列されます。  
+>SD Formater サンプル、または [SD Association Formatter](https://www.sdcard.org/downloads/) を使用することで標準レイアウトが生成されます。  
+>(以下略)
 
 
 #### データでの回避策
@@ -156,8 +171,8 @@ static void loopRender()
     // ...
 	{
         ScopedProfile(drawCycle);
-        //mainClass.drawJpg(buffer, JPG_BUFFER_SIZE); // Process on multiple cores
-        mainClass.drawJpg(buffer, JPG_BUFFER_SIZE, false); // Process on single core.
+        //mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE); // Process on multiple cores
+        mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE, false); // Process on single core. Try it, if If assert occurs on xQueueSend call. (However, FPS will be reduced)
 	}
     // ...
 }
@@ -230,7 +245,7 @@ TJepgDec の作者
 
 当アプリケーションの母体となった物です。TJpegDec を使用して画面に DMA 描画するロジックを拝借しました。  
 技術的なアドバイスもたくさんいただきました。  
-M5Unfied, M5GFX の作者でもあります。
+M5Unified, M5GFX の作者でもあります。
 * [Lovyan03](https://twitter.com/lovyan03) さん   
 [M5Stack_JpgLoopAnime](https://github.com/lovyan03/M5Stack_JpgLoopAnime)  
 [ESP32_ScreenShotReceiver](https://github.com/lovyan03/ESP32_ScreenShotReceiver)

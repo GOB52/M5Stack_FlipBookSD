@@ -20,7 +20,7 @@ Old format (gcf + wav) can be played back (however, audio playback is restricted
 
 ## Target devices
 It must be able to run the libraries it depends on and have an SD card.
-* M5Stack Basic 2.6
+* M5Stack Basic 2.6 or later
 * M5Stack Gray
 * M5Stack Core2 
 * M5Stack CoreS3
@@ -125,7 +125,16 @@ The cause is that drawing did not finish within the specified time, and the SD a
 If this occurs at a specific point in the video, it can be avoided by modifying the data side.
 
 Also, in rare cases, it may take a long time to read from SD, which may cause a reset as described above.  
-The cause of this is not known.
+The cause of this is not known.There may be SD card compatibility issues.
+
+https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
+
+>OS utilities should not be used for formatting SD cards. FAT16/FAT32 has lots of options for file system layout. In addition to the cluster size there are options for aligning file structures.  
+>The SD Association has a standard layout for each size SD card. Cards are designed to optimize performance for the standard layout. For example, flash chip boundaries are aligned with file system structures.  
+>My SdFormatter example produces the standard layout. On a PC use the [SD Association Formatter](https://www.sdcard.org/downloads/).  
+>You should not be getting errors due to the format. The correct format will only enhance performance, not reduce errors.  
+>I rarely see the type errors you are having. Most users either have solid errors or no errors.  
+>I have seen this type error when another SPI device interferes with the SD or when there are noisy or poor SPI signals.  
 
 #### Workaround by the data
 * Reduce playback frame rate
@@ -159,8 +168,8 @@ static void loopRender()
     // ...
 	{
         ScopedProfile(drawCycle);
-        //mainClass.drawJpg(buffer, JPG_BUFFER_SIZE); // Process on multiple cores
-        mainClass.drawJpg(buffer, JPG_BUFFER_SIZE, false); // Process on single core.
+        //mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE); // Process on multiple cores
+        mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE, false); // Process on single core. Try it, if If assert occurs on xQueueSend call. (However, FPS will be reduced)
 	}
     // ...
 }
