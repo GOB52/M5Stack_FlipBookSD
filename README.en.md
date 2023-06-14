@@ -54,7 +54,7 @@ However, Basic and Gray, which do not have PSRAM, have significant limitations o
 |S3\_release_DisplayModule| Support DisplayModule |
 
 ### Sample data for playback
-Download [sample_data_002.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11531987/sample_data_002.zip) and copy it to **/gcf** on your SD card.
+Download [sample_003.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11746898/sample_003.zip) and copy it to **/gcf** on your SD card.
 
 
 ## How to make data
@@ -88,8 +88,8 @@ e.g.)
 ```sh
 mkdir foo
 cp bar.mp4 foo
-cp conv.sh foo
-cp gmv.py foo
+cp script/conv.sh foo
+cp script/gcf.py foo
 cd foo
 bash conv.sh bar.mp4 24
 cp bar.gmv your_sd_card_path/gcf

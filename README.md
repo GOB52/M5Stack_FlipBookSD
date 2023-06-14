@@ -51,7 +51,7 @@ SINTEL (Trailer)
 |S3\_release_DisplayModule| ディスプレイモジュール 対応|
 
 ### 再生用サンプルデータ
-[sample_data_002.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11531987/sample_data_002.zip) をダウンロードして SD カードの **/gcf** へコピーしてください。
+[sample_003.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11746898/sample_003.zip) をダウンロードして SD カードの **/gcf** へコピーしてください。
 
 ## データの作成方法
 ### 必要なもの
@@ -83,7 +83,7 @@ SINTEL (Trailer)
 ```sh
 mkdir foo
 cp bar.mp4 foo
-cp scrupt/conv.sh foo
+cp script/conv.sh foo
 cp script/gcf.py foo
 cd foo
 bash conv.sh bar.mp4 24
