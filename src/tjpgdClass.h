@@ -63,7 +63,7 @@ struct TJpgD {
     uint16_t sz_pool;			/* Size of momory pool (bytes available) */
     uint32_t (*infunc)(TJpgD*, uint8_t*, uint32_t);/* Pointer to jpeg stream input function */
     void* device;				/* Pointer to I/O device identifiler for the session */
-
+    uint8_t comps_in_frame;		/* 1=Y(grayscale)  3=YCrCb */
 
     JRESULT prepare (uint32_t(*)(TJpgD*,uint8_t*,uint32_t), void*);
     JRESULT decomp (uint32_t(*)(TJpgD*,void*,JRECT*), uint32_t(*)(TJpgD*,uint32_t,uint32_t) = 0, uint32_t = 0);
