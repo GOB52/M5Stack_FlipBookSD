@@ -16,6 +16,9 @@ class MainClass
   public:
     bool setup(LovyanGFX* lcd);
     bool drawJpg(const uint8_t* buf, int32_t len, const bool multi = true);
+
+    // In rendering?
+    bool isBusy() const { return _busy || (_lcd && _lcd->dmaBusy()); }
     
   private:
     LovyanGFX* _lcd{};
@@ -42,6 +45,8 @@ class MainClass
     static uint32_t jpgWrite24(TJpgD *jdec, void *bitmap, TJpgD::JRECT *rect);
     static uint32_t jpgWrite16(TJpgD *jdec, void *bitmap, TJpgD::JRECT *rect);
     static uint32_t jpgWriteRow(TJpgD *jdec, uint32_t y, uint32_t h);
+
+    bool _busy{};
 };
 
 #endif

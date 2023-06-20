@@ -2,11 +2,13 @@
 #ifndef GOB_GMV_FILE_HPP
 #define GOB_GMV_FILE_HPP
 
+#include <tuple>
 #include <SdFat.h>
 #include "gob_gmv.hpp"
 
 namespace gob
 {
+
 class GMVFile
 {
   public:
@@ -42,22 +44,23 @@ class GMVFile
     void close() { if(_file) { _file.close(); } }
 
     // 
-    uint32_t readBlock(uint8_t* buf, uint32_t sz)
+    std::tuple<uint32_t/*size of readed image*/, uint32_t/* size of readed wav*/> readBlock(uint8_t* buf, uint32_t sz)
     {
-        if(!_file || eof()) { return 0; }
+        if(!_file || eof()) { return std::forward_as_tuple(0, 0); }
         ++_current;
         _size[0] = _size[1] = 0;
-        if(_file.read(_size, sizeof(_size)) != sizeof(_size)) { return 0; }
+        if(_file.read(_size, sizeof(_size)) != sizeof(_size)) { return std::forward_as_tuple(0, 0); }
 
         uint32_t len = _size[0] + _size[1];
-        uint32_t skip{};
-        if(len > sz) { skip = len - sz; }
         auto r = _file.read(buf, std::min<uint32_t>(sz, len));
-        if(skip)
+        if(r < len)
         {
-            _file.seek(_file.position() + skip);
+            // Keep file position to block size.
+            _file.seek(_file.position() + (len - r));
         }
-        return r >= _size[0] ? _size[0] : r; // Read image size
+        return (r == len)
+                ? std::forward_as_tuple(_size[0], _size[1])
+                : std::forward_as_tuple((r > _size[0]) ? _size[0] : r, (r > _size[0]) ? r - _size[0] : 0);
     }
 
     bool rewind()

@@ -46,6 +46,6 @@ class FileList
     std::vector<String> _list{};
     int32_t _cur{};
     int32_t _files{};
-    bool _shuffle{}; //
+    bool _shuffle{};
 };
 #endif
