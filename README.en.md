@@ -79,7 +79,7 @@ Video data can be in any format that can be processed by FFmpeg.
 |---|---|---|
 |move_file_path|YES|Source movie|
 |frame_rate|YES|Output frame rate (1 - 30)|
-|jpeg_maximum_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger size helps maintain quality but increases the likelihood of crashes (see Known Issues)|
+|jpeg_maximum_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger sizes preserve quality but are more likely to cause processing delays (see "Known Issues").|
 
 4. The files that named "videofilename.gmv" output to same directory.
 5. Copy the above files to **/gcf** on the SD card.
@@ -111,7 +111,7 @@ You can change the output quality, filters, etc. to your liking. The best parame
 ### Data restrictions
 * wav data quality (8KHz unsigned 8bit mono)  
 The quality of the audio data is lowered to reduce the processing load.  
-It is possible to edit the script to improve the quality, but the processing load may cause crashes. (See Known Issues).
+Scripts can be edited to improve quality, but processing delays may occur due to processing load. (See Known Issues)
 
 * Image size and frame rate
 When converting a video to JPEG, the width is 320px and the height is a value that maintains the aspect ratio.  
