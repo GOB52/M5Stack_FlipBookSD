@@ -14,7 +14,7 @@ SINTEL (Trailer)
 ## 概要
 動画ファイルを専用の形式 (gmv) へ変換したファイルを SD からストリーミング再生するアプリケーションです。  
 マルチコアを使用して DMA による描画と、音声再生を行っています。  
-旧形式である gcf + wav 再生可能です(但し PSRAM 非搭載機では音声再生制限あり)
+旧形式である gcf + wav は 0.1.1 より再生不可となりました。gmv 形式で再生成するか、gcf + wav => gmv 変換スクリプトを用いて変換してください。
 
 
 ## 対象デバイス
@@ -115,13 +115,10 @@ ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 
 
 ## 既知の問題
-### 再生時にリセットがかかる
-実行中にリセットがかかった場合 Serial モニタに assert で引っ掛かった旨が表示されているはずです。  
-原因は描画が所定の時間内に終わらず、 SD と Lcd のバスが衝突した事による物です。  
-動画の特定箇所で発生する場合はデータ側を修正することで回避することができます。
-
-またごく稀に SD からの読み込みに時間がかかる時があり、それによって上記と同様にリセットがかかる場合があります。  
-これは原因がわかっていません。 SD カードの相性かフォーマット状態に問題があるかもしれません。
+### 音声が途切れる、再生速度が遅い
+1 フレーム内での処理が間に合っていないことが原因です。  
+またごく稀に SD からの読み込みに時間がかかる時があり、それによって処理が間に合わないフレームが生じているかもしれません。  
+SD カードの相性かフォーマット状態に問題がある可能性があります。
 
 https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
 
@@ -159,24 +156,6 @@ conv.sh
 # ...
 ```
 
-#### プログラムでの回避策(非推奨)
-* マルチコア再生をシングルコア再生に切り替える  
-main.cpp の該当箇所をシングルコア使用の物に切り替えます。  
-再生速度は落ちますが、バス競合を確実に避けるようになります。
-
-```cpp
-src/main.cpp
-static void loopRender()
-{
-    // ...
-	{
-        ScopedProfile(drawCycle);
-        //mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE); // Process on multiple cores
-        mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE, false); // Process on single core. Try it, if If assert occurs on xQueueSend call. (However, FPS will be reduced)
-	}
-    // ...
-}
-```
 ## 操作方法
 ### メニュー
 |ボタン|説明|
@@ -195,7 +174,6 @@ static void loopRender()
 |Cボタン押下|画面右 1/3|音量上げる|
 
 ## 旧形式 (gcf + wav) からの変換
-現在の所、旧形式(gcf + wav) も再生できますが、
 変換用 Pyhton スクリプト [gcf_to_gmv.py](script/gcf_to_gmv.py) と、カレントディレクトリのファイル群の変換の為のシェルスクリプト [convert_gcf_to_gmv.sh](script/convert_gcf_to_gmv.sh) を用意しました。
 
 ```sh

@@ -15,7 +15,7 @@ The data format is modified for playback.
 ## Overview
 This application streams video files converted to the dedicated format gmv from SD.  
 It uses multi-cores to perform rendering with DMA and audio playback.  
-Old format (gcf + wav) can be played back (however, audio playback is restricted on machines without PSRAM).
+The old format gcf + wav is no longer playable since 0.1.1. Please regenerate it in gmv format or convert it using the gcf + wav => gmv conversion script.
 
 
 ## Target devices
@@ -119,13 +119,10 @@ When converting a video to JPEG, the width is 320px and the height is a value th
 To change the image size, edit the parameter for FFmpeg in conv.sh. **(scale=)**
 
 ## Known issues
-### Reset during playback
-If a reset occurs during execution, the Serial monitor should display a message that the assertion was caught.  
-The cause is that drawing did not finish within the specified time, and the SD and Lcd buses collided.  
-If this occurs at a specific point in the video, it can be avoided by modifying the data side.
-
-Also, in rare cases, it may take a long time to read from SD, which may cause a reset as described above.  
-The cause of this is not known.There may be SD card compatibility issues.
+### Audio is choppy or playback speed is slow.
+This may be due to the processing not being completed in time within a frame.  
+In rare cases, it may take a long time to read from the SD card, which may cause some frames to not be processed in time.  
+There may be a problem with the compatibility or formatting of the SD card.
 
 https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
 
@@ -156,25 +153,6 @@ conv.sh
 # ...
 ```
 
-#### Workaround by the program (deprecated)
-* Switch multi-core playback to single-core playback.  
-Switch the corresponding section of main.cpp to the one using a single core.  
-Playback speed will be reduced, but bus contention will be reliably avoided.
-
-```cpp
-src/main.cpp
-static void loopRender()
-{
-    // ...
-	{
-        ScopedProfile(drawCycle);
-        //mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE); // Process on multiple cores
-        mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE, false); // Process on single core. Try it, if If assert occurs on xQueueSend call. (However, FPS will be reduced)
-	}
-    // ...
-}
-```
-
 ## How to operate
 ### Menu
 | Button | Description |
@@ -194,7 +172,6 @@ static void loopRender()
 
 
 ## Conversion from old format (gcf + wav)
-Currently, the old format (gcf + wav) can be played,
 Pyhton script for conversion [gcf\_to\_gmv.py](script/gcf_to_gmv.py) and shell script for conversion of files in the current directory [convert\_gcf\_to\_gmv.sh](script/convert_gcf_to_gmv.sh) for converting files in the current directory.
 
 ```sh
