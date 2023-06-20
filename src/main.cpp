@@ -31,6 +31,9 @@
 #include "file_list.hpp"
 #include <gob_unifiedButton.hpp>
 
+#include <deque>
+#include <numeric>
+
 #ifndef TFCARD_CS_PIN
 # define TFCARD_CS_PIN (4)
 #endif
@@ -53,6 +56,19 @@ using UpdateDuration = std::chrono::duration<float, std::ratio<1, BASE_FPS> >;
 UpdateDuration durationTime{1}; // 1 == (1 / BASE_FPS)
 ESP32Clock::time_point lastTime{};
 float fps{};
+std::deque<float> fpsQueue{};
+
+float averageFps()
+{
+    if(fpsQueue.empty()) { return 0.0f; }
+    return std::accumulate(fpsQueue.cbegin(), fpsQueue.cend(), 0.0f) / fpsQueue.size();
+}
+
+void pushFpsQueue(const float f)
+{
+    if(fpsQueue.size() >= BASE_FPS) { fpsQueue.pop_front(); }
+    fpsQueue.emplace_back(f);
+}
 
 // std::this_thread::sleep_until returns earlier than the specified time, so implemeted own function.
 void sleepUntil(const std::chrono::time_point<ESP32Clock, UpdateDuration>& absTime)
@@ -84,7 +100,7 @@ MovieFileGCF gcf{};
 MovieFileGMV gmv{};
 
 uint8_t* buffers[NUMBER_OF_BUFFERS]; // For 1 of JPEG file(GCF), JPEG and wav block(GMV)
-uint32_t bufferIndex{};
+uint32_t bufferIndex{}, wavIndex{}, wavOffset{};
 
 uint8_t* wavBuffer{}; // wav buffer (PSRAM) for GCF 
 uint32_t wavBufferSize{};
@@ -126,10 +142,12 @@ static bool load1Frame()
 #if !defined(FIXED_FRAME)
     if(!mfile->eof())
     {
-        // Load image
+        // Load image (GCF), load image and wav (GMV)
         {
             ScopedProfile(loadCycle);
             isize = mfile->readImage(buf, JPG_BUFFER_SIZE + WAV_BLOCK_BUFFER_SIZE);
+            wavIndex = bufferIndex;
+            wavOffset = isize;
             bufferIndex += (isize > 0);
             bufferIndex %= 3;
             currentFrame = mfile->readCount();
@@ -140,7 +158,8 @@ static bool load1Frame()
             auto sz = mfile->readWav(wavBuffer, wavBufferSize);
             M5.Speaker.playWav(wavBuffer, sz);
         }
-        // In the case of GMV, it reads and plays back partially.
+#if 0
+        // In the case of GMV, it reads and playback partially.
         else if(mfile == &gmv)
         {
             ScopedProfile(wavCycle);
@@ -156,6 +175,7 @@ static bool load1Frame()
                 M5.Speaker.playRaw(buf + isize, wsz, wh.sample_rate, wh.channel >= 2, 1, 0);
             }
         }
+#endif
         return isize > 0;
     }
     return false;
@@ -208,9 +228,15 @@ static bool playMovie(const String& path, const bool bus = true)
     M5_LOGI("Wav rate:%u bit_per_sample:%u ch:%u blocksize:%u byte_per_sec:%u",
             wh.sample_rate, wh.bit_per_sample, wh.channel, wh.block_size, wh.byte_per_sec);
 
-    auto b = load1Frame();
-    if(b && bus) { display.startWrite(); }
-    return b;
+    if(mfile == &gcf)
+    {
+        auto b = load1Frame();
+        if(b && bus) { display.startWrite(); }
+        return b;
+    }
+    
+    if(bus) { display.startWrite(); }
+    return true;
 }
 
 void setup()
@@ -344,7 +370,8 @@ void setup()
 
 using loop_function = void(*)();
 static void loopMenu();
-static void loopRender();
+static void loopRenderGCF();
+static void loopRenderGMV();
 loop_function loop_f = loopMenu;
 
 // Menu
@@ -359,7 +386,7 @@ static void loopMenu()
         display.clear(0);
         if(playMovie(list.getCurrentFullpath()))
         {
-            loop_f = loopRender;
+            loop_f = (mfile == &gmv) ? loopRenderGMV : loopRenderGCF;
             unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::transparent_all);
             lastTime = ESP32Clock::now();
             return;
@@ -412,7 +439,90 @@ static void changeToMenu()
 }
 
 // Render to lcd directly with DMA
-static void loopRender()
+static void loopRenderGMV()
+{
+    static int32_t showVolume{};
+
+    // 0:Wait dma done (Complete rendering to lcd?)
+    while(mainClass.isBusy()) { delay(1); }
+
+    if(false && showVolume-- > 0)
+    {
+        display.setCursor(0,0);
+        display.printf("Vol:%u/255", volume);
+    }
+
+    // 1:Release BUS
+    display.endWrite();
+
+    // Change volume
+    if(M5.BtnA.isPressed()) { if(volume >   0) { --volume; M5.Speaker.setVolume(volume); showVolume = BASE_FPS;} }
+    if(M5.BtnC.isPressed()) { if(volume < 255) { ++volume; M5.Speaker.setVolume(volume); showVolume = BASE_FPS;} }
+    // Stop
+    if(M5.BtnB.wasClicked())
+    {
+        changeToMenu();
+        return;
+    }
+
+    // 2:Load from SD
+    if(currentFrame >= maxFrames - 1) // End of file
+    {
+        switch(playType)
+        {
+        case PlayType::RepeatAll:
+        case PlayType::Shuffle:
+            M5_LOGI("To next file");
+            list.next();
+            // fallthrough
+        case PlayType::RepeatSingle:
+            M5_LOGI("Playback from top");
+            display.clear();
+            if(!playMovie(list.getCurrentFullpath(), false)) { changeToMenu(); return; }
+            lastTime = ESP32Clock::now();
+            break;
+        default:
+            break; // Nop
+        }
+    }
+    load1Frame();
+    
+    // 3: Occupy BUS
+    display.startWrite();
+
+    // 4:Render image
+    {
+        ScopedProfile(drawCycle);
+        mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE); // Process on multiple cores
+    }
+
+    // 5:Playback audio(GMV)
+    if(mfile == &gmv)
+    {
+        ScopedProfile(wavCycle);
+        auto wh = mfile->wavHeader();
+        auto wsz = mfile->readWav(nullptr/*dummy*/, 0/*dummy*/);
+        M5_LOGD("widx:%u of::%u wsz:%u", wavIndex, wavOffset, wsz);
+        uint8_t* buf = buffers[wavIndex];
+        if(wh.bit_per_sample >> 4)
+        {
+            M5.Speaker.playRaw((const int16_t*)(buf + wavOffset), wsz >> 1, wh.sample_rate, wh.channel >= 2, 1, 0);
+        }
+        else
+        {
+            M5.Speaker.playRaw(buf + wavOffset, wsz, wh.sample_rate, wh.channel >= 2, 1, 0);
+        }
+    }
+
+    auto now = ESP32Clock::now();
+    auto delta = now - lastTime;
+    lastTime = now;
+    fps = BASE_FPS / std::chrono::duration_cast<UpdateDuration>(delta).count();
+    pushFpsQueue(fps);
+    M5_LOGD("%2.2f/%2.2f %5d/%5d %u/%u/%u", fps, averageFps(),currentFrame, maxFrames, loadCycle, wavCycle, drawCycle);
+}
+
+static void loopRenderGCF()
 {
     {
         ScopedProfile(drawCycle);
@@ -427,7 +537,7 @@ static void loopRender()
     auto delta = now - lastTime;
     lastTime = now;
     fps = BASE_FPS / std::chrono::duration_cast<UpdateDuration>(delta).count();
-    M5_LOGI("%2.2f %5d/%5d %u/%u/%u", fps, currentFrame, maxFrames, loadCycle, wavCycle, drawCycle);
+    M5_LOGD("%2.2f %5d/%5d %u/%u/%u", fps, currentFrame, maxFrames, loadCycle, wavCycle, drawCycle);
     
     // Change volume
     if(M5.BtnA.isPressed()) { if(volume >   0) { --volume; M5.Speaker.setVolume(volume); } }
@@ -459,6 +569,7 @@ static void loopRender()
             M5_LOGI("Playback from top");
             display.clear(0);
             if(!playMovie(list.getCurrentFullpath(), false)) { changeToMenu(); return; }
+            display.clear();
             lastTime = ESP32Clock::now();
             break;
         default:
