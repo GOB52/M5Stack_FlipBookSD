@@ -20,7 +20,7 @@ class GMVFile
     inline bool eof() const { return _file && _current >= blocks(); }
     explicit inline operator bool() const { return (bool)_file; }
     const gob::wav_header_t& wavHeader() const { return _header.wavHeader; }
-    uint32_t fps() const { return (uint32_t)_header.fps; }
+    float fps() const { return _header.fps; }
     uint32_t imageSize() const { return _size[0]; }
     uint32_t wavSize() const { return _size[1]; }
     

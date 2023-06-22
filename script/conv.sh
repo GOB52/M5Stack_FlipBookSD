@@ -14,21 +14,26 @@
 # Check arguments
 if [ $# -lt 2 ] || [ $# -gt 3 ];then
    echo "Usage: $0 movie_file_path frame_rate [jpeg_maximum_size]"
-   echo "  frame_rate 1 ~ 30"
+   echo "  movie_file_path (File that FFmpeg can handle)"
+   echo "  frame_rate 1.0 ~ 30.0 (Floating-point number)"
    echo "  jpeg_maximum_size 1024 - 10240 (7168 as default)"
    exit 1
 fi
 
+# Exists file $1?   
 if [ ! -e $1 ];then
    echo "$1 is not exists."
    exit 1
 fi
 
-if [[ ! $2 =~ ^[0-9]+$ ]] || [ $2 -lt 1 ] || [ $2 -gt 30 ];then
-   echo "Invalid frame_rate range (1 - 30)"
+# Is valid $2?  
+echo "$2" | grep -q "^-\?[0-9]\+\.\?[0-9]*$"
+if [ $? -ne 0 ] || [ `echo "$2 < 1.0" | bc` -eq 1 ] || [ `echo "$2 > 30.0" | bc` -eq 1 ];then
+   echo "Invalid frame_rate range (1.0 - 30.0)"
    exit 1
 fi
 
+# Exists and valid $3?
 if [ -n "$3" ] && [[ $3 =~ ^[0-9]+$ ]];then
    JPEGSIZE=$3
 else
@@ -43,7 +48,18 @@ fi
 # Output JPEG images from movie.
 rm -rf jpg$$
 mkdir jpg$$
-ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
+
+# ------------------------
+# Choose output option
+# ------------------------
+# (1) Specify the frame rate per second without changing the total number of frames
+#ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
+
+# (2) If the frame rate is less than the original, it is thinned out; if it is more, it is increased by averaging the frames before and after.
+ffmpeg -i $1 -vf scale=320:-1,dejudder,framerate=$2 -qmin 1 -q 1 jpg$$/%06d.jpg
+
+# (3) If the frame rate is less than the original, it is thinned out; if it is more, duplicate frames are created.
+#ffmpeg -i $1 -vf scale=320:-1,dejudder,fps=$2 -qmin 1 -q 1 jpg$$/%06d.jpg
 
 # Check file size and re-convert if oversized
 for fname in jpg$$/*.jpg
@@ -68,8 +84,3 @@ python gmv.py jpg$$ ${1%.*}.wav $2 ${1%.*}.gmv
 rm -rf jpg$$
 rm ${1%.*}.wav
 exit 0
-
-
-
-
-

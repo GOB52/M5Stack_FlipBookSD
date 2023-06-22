@@ -55,6 +55,7 @@
 
 // For debug
 //#define FIXED_FRAME (100)
+//#define START_FRAME (2317)
 
 namespace
 {
@@ -107,7 +108,7 @@ FileList list;
 gob::GMVFile gmv{};
 
 uint8_t* buffers[NUMBER_OF_BUFFERS]; // For 1 of JPEG and wav block
-uint32_t bufferIndex{}, outIndex{}, jpegSize{}, wavSize{};
+uint32_t bufferIndex{}, outIndex{}, jpegSize{}, wavSize{}, wavTotal{};
 
 gob::UnifiedButton unfiedButton;
 
@@ -134,17 +135,16 @@ PROGMEM const char* ptTable[] = { ptSingle, ptRepeatSingle, ptRepeatAll, ptRepea
 //
 }
 
-// Load one of the JPEG image and playback Wav
+// Load one of the JPEG image and wav block
 // WARNING: BUS must be released
 static bool load1Frame()
 {
     if(!gmv) { return false; }
 
     auto buf = buffers[bufferIndex];
-#if !defined(FIXED_FRAME)
+#if !defined(FIXED_FRAME) && !defined(START_FRAME)
     if(!gmv.eof())
     {
-        // Load image (GCF), load image and wav (GMV)
         {
             ScopedProfile(loadCycle);
             std::tie(jpegSize, wavSize) = gmv.readBlock(buf, BUFFER_SIZE);
@@ -156,7 +156,7 @@ static bool load1Frame()
         return jpegSize || wavSize;
     }
     return false;
-#else
+#elif defined(FIXED_FRAME)
     auto frame = (FIXED_FRAME < gmv.blocks()) ? FIXED_FRAME : gmv.blocks() - 1;
     while(!gmv.eof() && currentFrame < frame)
     {
@@ -164,6 +164,31 @@ static bool load1Frame()
         currentFrame = gmv.readCount();
     }
     return true;
+#elif defined(START_FRAME)
+    auto frame = (START_FRAME < gmv.blocks()) ? START_FRAME : gmv.blocks() - 1;
+    if(currentFrame < frame)
+    {
+        M5_LOGI("Goto %u", frame);
+        while(!gmv.eof() && currentFrame < frame)
+        {
+            std::tie(jpegSize, wavSize) = gmv.readBlock(buf, BUFFER_SIZE);
+            currentFrame = gmv.readCount();
+        }
+        return true;
+    }
+    if(!gmv.eof())
+    {
+        {
+            ScopedProfile(loadCycle);
+            std::tie(jpegSize, wavSize) = gmv.readBlock(buf, BUFFER_SIZE);
+            outIndex = bufferIndex;
+            ++bufferIndex;
+            bufferIndex %= 3;
+            currentFrame = gmv.readCount();
+        }
+        return jpegSize || wavSize;
+    }
+    return false;
 #endif
 }
 
@@ -171,7 +196,7 @@ static bool load1Frame()
 static bool playMovie(const String& path, const bool bus = true)
 {
     M5.Speaker.stop();
-    currentFrame = maxFrames = 0;
+    wavTotal = currentFrame = maxFrames = 0;
     clearFpsQueue();
     
     if(gmv) { gmv.close(); }
@@ -181,7 +206,7 @@ static bool playMovie(const String& path, const bool bus = true)
     }
 
     maxFrames = gmv.blocks();
-    M5_LOGI("[%s] MaxFrames:%u FrameRate:%u", path.c_str(), maxFrames, gmv.fps()); 
+    M5_LOGI("[%s] MaxFrames:%u FrameRate:%f", path.c_str(), maxFrames, gmv.fps());
     
     // durationTime is calculated from frame rate.
     //durationTime = UpdateDuration((float)BASE_FPS / gmv.fps());
@@ -388,7 +413,7 @@ static void loopRender()
         if(showVolume >0) { display.fillRect(0, 0, display.width() * (volume / 255.0f), 4, TFT_BLUE); }
     }
     display.setCursor(0, 4);
-    display.printf("FPS:%2.2f", afps);
+    display.printf("F:%2.2f C:%u", afps, currentFrame);
 #endif
     
     // 0:Wait dma done (Completed rendering to lcd?)
@@ -438,7 +463,6 @@ static void loopRender()
     {
         ScopedProfile(wavCycle);
         auto& wh = gmv.wavHeader();
-        M5_LOGD("outIdx:%u jsz::%u wsz:%u", outIndex, jpegSize, wavSize);
         const uint8_t* buf = buffers[outIndex] + jpegSize;
         if(wh.bit_per_sample >> 4)
         {
@@ -448,6 +472,8 @@ static void loopRender()
         {
             M5.Speaker.playRaw(buf, wavSize, wh.sample_rate, wh.channel >= 2, 1, 0);
         }
+        wavTotal += wavSize;
+        M5_LOGD("outIdx:%u jsz:%u wsz:%u/%u", outIndex, jpegSize, wavSize, wavTotal);
     }
 
     auto now = ESP32Clock::now();
@@ -456,7 +482,7 @@ static void loopRender()
     fps = BASE_FPS / std::chrono::duration_cast<UpdateDuration>(delta).count();
     pushFpsQueue(fps);
     afps = averageFps();
-    M5_LOGD("%2.2f/%2.2f %5d/%5d %u/%u/%u", fps, afps, currentFrame, maxFrames, loadCycle, wavCycle, drawCycle);
+    M5_LOGD("%5d/%5d %2.2f/%2.2f %u/%u/%u", currentFrame, maxFrames, fps, afps, loadCycle, wavCycle, drawCycle);
 }
 
 //
