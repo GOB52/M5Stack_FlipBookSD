@@ -73,7 +73,7 @@ done
 # Make 8bit 8K mono wav and normalize
 ffmpeg -i $1 -ac 1 -ar 8000 -acodec pcm_u8 -y ${1%.*}.wav
 ffmpeg-normalize ${1%.*}.wav --audio-codec pcm_u8 --sample-rate 8000 -f -o ${1%.*}.wav
-# Make 16bit 22.5K streo wav and normalize
+# Make 16bit 22.05K streo wav and normalize
 #ffmpeg -i $1 -ac 2 -ar 22050 -acodec pcm_s16le -y ${1%.*}.wav
 #ffmpeg-normalize ${1%.*}.wav --audio-codec pcm_s16le --sample-rate 22050 -f -o ${1%.*}.wav
 
