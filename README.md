@@ -14,7 +14,7 @@ SINTEL (Trailer)
 ## 概要
 動画ファイルを専用の形式 (gmv) へ変換したファイルを SD からストリーミング再生するアプリケーションです。  
 マルチコアを使用して DMA による描画と、音声再生を行っています。  
-旧形式である gcf + wav は 0.1.1 より再生不可となりました。gmv 形式で再生成するか、gcf + wav => gmv 変換スクリプトを用いて変換してください。
+***旧形式である gcf + wav は 0.1.1 より再生不可となりました。gmv 形式で再生成するか、gcf + wav => gmv 変換スクリプトを用いて変換してください。***
 
 
 ## 対象デバイス
@@ -51,7 +51,7 @@ SINTEL (Trailer)
 |S3\_release_DisplayModule| ディスプレイモジュール 対応|
 
 ### 再生用サンプルデータ
-[sample_003.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11746898/sample_003.zip) をダウンロードして SD カードの **/gcf** へコピーしてください。
+[sample_0_1_1.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11871296/sample_0_1_1.zip) をダウンロードして解凍し、 SD カードの **/gcf** へコピーしてください。
 
 ## データの作成方法
 ### 必要なもの
@@ -68,12 +68,12 @@ SINTEL (Trailer)
 1. 任意に作ったデータ作成用ディレクトリに動画データをコピーする
 1. 同ディレクトリに [conv.sh](script/conv.sh) と [gmv.py](script/gmv.py) をコピーする
 1. シェルスクリプトを次のように指定して実行する。  
-**bash conv.sh move_file_path frame_rate [ jpeg_maxumu,_size (無指定時は 7168) ]**
+**bash conv.sh move_file_path frame_rate [ jpeg_maxumum_size (無指定時は 7168) ]**
 
 |引数|必須?|説明|
 |---|---|---|
 |move_file_path|YES|元となる動画|
-|frame_rate|YES|出力されるデータの FPS (1 - 30)|
+|frame_rate|YES|出力されるデータの FPS (1.0 - 30.0)<br>整数または小数を指定可能|
 |jpeg_maximum_size|NO|JPEG 1枚あたりの最大ファイルサイズ( 1024 - 10240)<br>大きいと品質が維持されるが処理遅延が発生する可能性が高くなる(既知の問題参照)|
 
 4. 動画ファイル名.gmv が出力される。
@@ -86,7 +86,7 @@ cp bar.mp4 foo
 cp script/conv.sh foo
 cp script/gcf.py foo
 cd foo
-bash conv.sh bar.mp4 24
+bash conv.sh bar.mp4 29.97
 cp bar.gmv your_sd_card_path/gcf
 ```
 
@@ -113,6 +113,8 @@ ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 <ins>現在の所 320 x 240 で 24 FPS 程度、 320 x 180 で 30 FPS 程度の再生が可能です。</ins>  
 画像サイズを変更したい場合は [conv.sh](conv.sh) の FFmpeg へ与えているパラメータを変更してください。 **(scale=)**
 
+* 画像サイズと出力先サイズ  
+画像データが出力先サイズに満たない、または逸脱する場合は、センタリングして表示されます。
 
 ## 既知の問題
 ### 音声が途切れる、再生速度が遅い
