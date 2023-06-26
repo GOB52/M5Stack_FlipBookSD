@@ -15,7 +15,7 @@ The data format is modified for playback.
 ## Overview
 This application streams video files converted to the dedicated format gmv from SD.  
 It uses multi-cores to perform rendering with DMA and audio playback.  
-Old format (gcf + wav) can be played back (however, audio playback is restricted on machines without PSRAM).
+***The old format gcf + wav is no longer playable since 0.1.1. Please regenerate it in gmv format or convert it using the gcf + wav => gmv conversion script.***
 
 
 ## Target devices
@@ -24,8 +24,6 @@ It must be able to run the libraries it depends on and have an SD card.
 * M5Stack Gray
 * M5Stack Core2 
 * M5Stack CoreS3
- 
-However, Basic and Gray, which do not have PSRAM, have significant limitations on the amount of time that audio can be played.
 
 ## Required libraries
 * [M5Unified](https://github.com/m5stack/M5Unified)
@@ -54,8 +52,7 @@ However, Basic and Gray, which do not have PSRAM, have significant limitations o
 |S3\_release_DisplayModule| Support DisplayModule |
 
 ### Sample data for playback
-Download [sample_003.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11746898/sample_003.zip) and copy it to **/gcf** on your SD card.
-
+Download [sample_0_1_1.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11871296/sample_0_1_1.zip), unzip it and copy to **/gcf** on your SD card.
 
 ## How to make data
 ### Required tools 
@@ -73,13 +70,13 @@ Video data can be in any format that can be processed by FFmpeg.
 1. Copy video data to an arbitrarily created directory.
 1. Copy [conv.sh](script/conv.sh) and [gmv.py](script/gmv.py) to the same directory.
 1. Execute the shell script as follows  
-**bash conv.sh move_file_name frame_rate [ jpeg_maxumu,_size (Default if not specified is 7168) ]**
+**bash conv.sh move_file_name frame_rate [ jpeg_maxumum_size (Default if not specified is 7168) ]**
 
 | Argument | Required?| Description |
 |---|---|---|
 |move_file_path|YES|Source movie|
-|frame_rate|YES|Output frame rate (1 - 30)|
-|jpeg_maximum_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger size helps maintain quality but increases the likelihood of crashes (see Known Issues)|
+|frame_rate|YES|Output frame rate (1.0 - 30.0)<br>**Integer or decimal numbers can be specified**|
+|jpeg_maximum_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger sizes preserve quality but are more likely to cause processing delays (see "Known Issues").|
 
 4. The files that named "videofilename.gmv" output to same directory.
 5. Copy the above files to **/gcf** on the SD card.
@@ -91,7 +88,7 @@ cp bar.mp4 foo
 cp script/conv.sh foo
 cp script/gcf.py foo
 cd foo
-bash conv.sh bar.mp4 24
+bash conv.sh bar.mp4 29.97
 cp bar.gmv your_sd_card_path/gcf
 ```
 
@@ -111,21 +108,21 @@ You can change the output quality, filters, etc. to your liking. The best parame
 ### Data restrictions
 * wav data quality (8KHz unsigned 8bit mono)  
 The quality of the audio data is lowered to reduce the processing load.  
-It is possible to edit the script to improve the quality, but the processing load may cause crashes. (See Known Issues).
+Scripts can be edited to improve quality, but processing delays may occur due to processing load. (See Known Issues)
 
-* Image size and frame rate
+* Image size and frame rate  
 When converting a video to JPEG, the width is 320px and the height is a value that maintains the aspect ratio.  
 <ins>Currently, 320 x 240 can be played back at about 24 FPS, and 320 x 180 at about 30 FPS.</ins>  
 To change the image size, edit the parameter for FFmpeg in conv.sh. **(scale=)**
 
-## Known issues
-### Reset during playback
-If a reset occurs during execution, the Serial monitor should display a message that the assertion was caught.  
-The cause is that drawing did not finish within the specified time, and the SD and Lcd buses collided.  
-If this occurs at a specific point in the video, it can be avoided by modifying the data side.
+* Image size and output device size  
+If the image size is narrower or wider than the output device size, it will be centered.
 
-Also, in rare cases, it may take a long time to read from SD, which may cause a reset as described above.  
-The cause of this is not known.There may be SD card compatibility issues.
+## Known issues
+### Audio is choppy or playback speed is slow.
+This may be due to the processing not being completed in time within a frame.  
+In rare cases, it may take a long time to read from the SD card, which may cause some frames to not be processed in time.  
+There may be a problem with the compatibility or formatting of the SD card.
 
 https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
 
@@ -156,25 +153,6 @@ conv.sh
 # ...
 ```
 
-#### Workaround by the program (deprecated)
-* Switch multi-core playback to single-core playback.  
-Switch the corresponding section of main.cpp to the one using a single core.  
-Playback speed will be reduced, but bus contention will be reliably avoided.
-
-```cpp
-src/main.cpp
-static void loopRender()
-{
-    // ...
-	{
-        ScopedProfile(drawCycle);
-        //mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE); // Process on multiple cores
-        mainClass.drawJpg(buffers[(bufferIndex - 1 + NUMBER_OF_BUFFERS) % NUMBER_OF_BUFFERS], JPG_BUFFER_SIZE, false); // Process on single core. Try it, if If assert occurs on xQueueSend call. (However, FPS will be reduced)
-	}
-    // ...
-}
-```
-
 ## How to operate
 ### Menu
 | Button | Description |
@@ -194,7 +172,6 @@ static void loopRender()
 
 
 ## Conversion from old format (gcf + wav)
-Currently, the old format (gcf + wav) can be played,
 Pyhton script for conversion [gcf\_to\_gmv.py](script/gcf_to_gmv.py) and shell script for conversion of files in the current directory [convert\_gcf\_to\_gmv.sh](script/convert_gcf_to_gmv.sh) for converting files in the current directory.
 
 ```sh

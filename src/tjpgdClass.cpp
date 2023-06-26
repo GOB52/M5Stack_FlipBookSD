@@ -515,7 +515,7 @@ static TJpgD::JRESULT mcu_load (
     z = 0;
         
     nby = jd->msx * jd->msy;	/* Number of Y blocks (1, 2 or 4) */
-    nbc = 2;					/* Number of C blocks (2) */
+    nbc = jd->comps_in_frame - 1;	/* Number of C blocks (2 or 0(grayscale)) */
 
     for (blk = 0; blk < nby + nbc; blk++) {
         uint_fast8_t cmp = (blk < nby) ? 0 : blk - nby + 1;	/* Component number 0:Y, 1:Cb, 2:Cr */
@@ -772,10 +772,12 @@ TJpgD::JRESULT TJpgD::prepare (
         case 0xC0:	/* SOF0 (baseline JPEG) */
             width = LDB_WORD(seg+3);		/* Image width in unit of pixel */
             height = LDB_WORD(seg+1);		/* Image height in unit of pixel */
-            if (seg[5] != 3) return TJpgD::JDR_FMT3;	/* Err: Supports only Y/Cb/Cr format */
+            comps_in_frame = seg[5];
+
+            if (seg[5] != 1 && seg[5] != 3) return JDR_FMT3;	/* Err: Supports only Y/Cb/Cr or Y(Grayscale) format */
 
             /* Check three image components */
-            for (i = 0; i < 3; i++) {
+            for (i = 0; i < seg[5]; i++) {
                 b = seg[7 + 3 * i];							/* Get sampling factor */
                 if (!i) {	/* Y component */
                     if (b != 0x11 && b != 0x22 && b != 0x21) {	/* Check sampling factor */
@@ -811,10 +813,10 @@ TJpgD::JRESULT TJpgD::prepare (
         case 0xDA:	/* SOS */
             if (!width || !height) return TJpgD::JDR_FMT1;	/* Err: Invalid image size */
 
-            if (seg[0] != 3) return TJpgD::JDR_FMT3;				/* Err: Supports only three color components format */
+            if (seg[0] != comps_in_frame) return JDR_FMT3;	/* Err: Supports only three color or grayscale components format */
 
             /* Check if all tables corresponding to each components have been loaded */
-            for (i = 0; i < 3; i++) {
+            for (i = 0; i < comps_in_frame; i++) {
                 b = seg[2 + 2 * i];	/* Get huffman table ID */
                 if (b != 0x00 && b != 0x11)	return TJpgD::JDR_FMT3;	/* Err: Different table number for DC/AC element */
                 b = i ? 1 : 0;
@@ -958,8 +960,7 @@ static void task_output(void* arg)
 void TJpgD::multitask_begin ()
 {
     param.sem = xQueueCreate(queue_max + 1, sizeof(queue_t*));
-    //xTaskCreatePinnedToCore(task_output, "task_output", 2048, &param, 1, &param.task, 0);
-    xTaskCreatePinnedToCore(task_output, "task_output", 4096, &param, 1, &param.task, 0);
+    xTaskCreatePinnedToCore(task_output, "task_output", 4096, &param, 1, &param.task, 0/*core0*/);
 }
 
 void TJpgD::multitask_end ()
@@ -985,6 +986,11 @@ TJpgD::JRESULT TJpgD::decomp_multitask (
     uint8_t workbuf[768];
     uint_fast16_t yidx = 0;
 
+    if (comps_in_frame == 1) { /* Erase Cr/Cb for Grayscale */
+        jd_yuv_t* b = (jd_yuv_t*)mcubufs;
+        size_t end = sizeof(mcubufs) / sizeof(jd_yuv_t);
+        do { *b++ = 128; } while (--end);
+    }
 
     bayer = (bayer + 1) & 7;
 
