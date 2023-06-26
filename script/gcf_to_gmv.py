@@ -8,6 +8,8 @@ import argparse
 import glob
 from ctypes import *
 import struct
+import math
+from fractions import Fraction
 
 class WaveHeader(LittleEndianStructure):
     _pack = 1
@@ -119,7 +121,7 @@ def main():
     args = parser.parse_args()
 
     spath = args.gcffile.split('.')
-    fps = int(spath[-2])
+    fps = float(spath[-2])
 
     if args.verbose:
         print('FPS:{}'.format(fps))
@@ -130,12 +132,13 @@ def main():
     # wav
     wh,sub,wdata = loadWav(args.wavfile)
     wrest = len(wdata)
-    wblk, mod = divmod(wh.byte_per_sec, fps)
-    # Align 4 bytes
-    wadd = 4
-    wblk &= ~3
     wpos = 0
     wmod = 0
+
+    wblk = int(math.modf(wh.byte_per_sec / fps)[1])
+    wblk &= ~(wh.block_size - 1)
+    wadd = wh.block_size
+    frac = Fraction(math.modf(wh.sample_rate / fps)[0]).limit_denominator()
     
     # Output GMV
     with open(args.outfile, 'wb') as outf:
@@ -153,9 +156,9 @@ def main():
 
             # wav block size
             wsz = wblk
-            wmod += mod
-            if wmod >= fps:
-                wmod -= fps
+            wmod += frac
+            if wmod >= Fraction(1,1):
+                wmod -= Fraction(1,1)
                 wsz += wadd
             if(wsz > wrest): wsz = wrest
             outf.write(struct.pack('<L', wsz))
