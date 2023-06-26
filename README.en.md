@@ -36,7 +36,7 @@ It must be able to run the libraries it depends on and have an SD card.
 ## Included
 * [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)  Version modified by Lovyan03 - san
 
-## Build type (PlatfromIO)
+## Build type (PlatformIO)
 ### For Basic,Gray,Core2
 |Env|Description|
 |---|---|

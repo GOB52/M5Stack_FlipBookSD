@@ -35,7 +35,7 @@ SINTEL (Trailer)
 ## 含まれているライブラリ
 * [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)  Lovyan03 さんの改造板
 
-## ビルド種別(PlatfromIO)
+## ビルド種別(PlatformIO)
 ### Basic,Gray,Core2 用
 |Env|説明|
 |---|---|
