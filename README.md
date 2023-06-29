@@ -35,7 +35,7 @@ SINTEL (Trailer)
 ## 含まれているライブラリ
 * [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)  Lovyan03 さんの改造板
 
-## ビルド種別(PlatfromIO)
+## ビルド種別(PlatformIO)
 ### Basic,Gray,Core2 用
 |Env|説明|
 |---|---|
@@ -68,13 +68,13 @@ SINTEL (Trailer)
 1. 任意に作ったデータ作成用ディレクトリに動画データをコピーする
 1. 同ディレクトリに [conv.sh](script/conv.sh) と [gmv.py](script/gmv.py) をコピーする
 1. シェルスクリプトを次のように指定して実行する。  
-**bash conv.sh move_file_path frame_rate [ jpeg_maxumum_size (無指定時は 7168) ]**
+**bash conv.sh movie_file_path frame_rate [ jpeg_maxumum_size (無指定時は 7168) ]**
 
 |引数|必須?|説明|
 |---|---|---|
-|move_file_path|YES|元となる動画|
-|frame_rate|YES|出力されるデータの FPS (1.0 - 30.0)<br>整数または小数を指定可能|
-|jpeg_maximum_size|NO|JPEG 1枚あたりの最大ファイルサイズ( 1024 - 10240)<br>大きいと品質が維持されるが処理遅延が発生する可能性が高くなる(既知の問題参照)|
+|movie\_file_path|YES|元となる動画|
+|frame\_rate|YES|出力されるデータの FPS (1.0 - 30.0)<br>整数または小数を指定可能|
+|jpeg\_maximum\_size|NO|JPEG 1枚あたりの最大ファイルサイズ( 1024 - 10240)<br>大きいと品質が維持されるが処理遅延が発生する可能性が高くなる(既知の問題参照)|
 
 4. 動画ファイル名.gmv が出力される。
 5. gmv ファイルを SD カードの **/gcf** にコピーする。
@@ -104,6 +104,9 @@ ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 出力品質や、フィルター等、変更することでお好みのものにできます。元となる動画によって最適なパラメータは異なるので、FFmpeg の情報を参考にして行ってください。
 
 ### データの制限
+* 変換可能な動画フォーマット  
+FFMpeg が扱う事ができないフォーマットはサポートされません。
+
 * wav データの品質 (8KHz 符号なし 8bit mono)  
 処理負荷軽減の為、音声データの品質は下げています。  
 スクリプトを編集して品質を上げることは可能ですが、処理負荷によって処理遅延が生じるかもしれません。(既知の問題参照)
@@ -141,13 +144,13 @@ https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
 #### データでの回避策
 * 再生フレームレートを減らす
 ```sh
-bash conv.sh video.mp4 30 # 30 FPS
-bash conv.sh video.mp4 24 # Reduce to 24
+bash conv.sh movie.mp4 30 # 30 FPS
+bash conv.sh movie.mp4 24 # Reduce to 24
 ```
 * JPEG ファイルサイズを小さくする 
 ```sh
-bash conv.sh video.mp4 30      # 7168 as default
-bash conv.sh video.mp4 30 5120 # Reduce to 5120
+bash conv.sh movie.mp4 30      # 7168 as default
+bash conv.sh movie.mp4 30 5120 # Reduce to 5120
 ```
 * 画像サイズを小さくする
 ```sh

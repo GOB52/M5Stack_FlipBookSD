@@ -13,7 +13,7 @@ The data format is modified for playback.
 
 
 ## Overview
-This application streams video files converted to the dedicated format gmv from SD.  
+This application playback streams movie files that converted to the dedicated format gmv from SD.  
 It uses multi-cores to perform rendering with DMA and audio playback.  
 ***The old format gcf + wav is no longer playable since 0.1.1. Please regenerate it in gmv format or convert it using the gcf + wav => gmv conversion script.***
 
@@ -36,7 +36,7 @@ It must be able to run the libraries it depends on and have an SD card.
 ## Included
 * [TJpgDec](http://elm-chan.org/fsw/tjpgd/00index.html)  Version modified by Lovyan03 - san
 
-## Build type (PlatfromIO)
+## Build type (PlatformIO)
 ### For Basic,Gray,Core2
 |Env|Description|
 |---|---|
@@ -65,20 +65,20 @@ Download [sample_0_1_1.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11
 
 ### Procedure
 Making data on terminal.  
-Video data can be in any format that can be processed by FFmpeg.
+Movie data can be in any format that can be processed by FFmpeg.
 
-1. Copy video data to an arbitrarily created directory.
+1. Copy movie data to an arbitrarily created directory.
 1. Copy [conv.sh](script/conv.sh) and [gmv.py](script/gmv.py) to the same directory.
 1. Execute the shell script as follows  
-**bash conv.sh move_file_name frame_rate [ jpeg_maxumum_size (Default if not specified is 7168) ]**
+**bash conv.sh movie_file_name frame_rate [ jpeg_maxumum_size (Default if not specified is 7168) ]**
 
 | Argument | Required?| Description |
 |---|---|---|
-|move_file_path|YES|Source movie|
-|frame_rate|YES|Output frame rate (1.0 - 30.0)<br>**Integer or decimal numbers can be specified**|
-|jpeg_maximum_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger sizes preserve quality but are more likely to cause processing delays (see "Known Issues").|
+|movie\_file_path|YES|Source movie|
+|frame\_rate|YES|Output frame rate (1.0 - 30.0)<br>**Integer or decimal numbers can be specified**|
+|jpeg\_maximum\_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger sizes preserve quality but are more likely to cause processing delays (see "Known Issues").|
 
-4. The files that named "videofilename.gmv" output to same directory.
+4. The files that named "movie\_file\_name.gmv" output to same directory.
 5. Copy the above files to **/gcf** on the SD card.
 
 e.g.)
@@ -93,25 +93,28 @@ cp bar.gmv your_sd_card_path/gcf
 ```
 
 ### Processes performed by shell scripts
-* Output JPEG images from video at the specified frame rate.  
+* Output JPEG images from movie at the specified frame rate.  
 Create an output directory of . /jpg+PID as the output directory. This allows multiple terminals to convert in parallel.
 * If the size of the output JPEG file exceeds the specified size, reconvert it to fit.
-* Output audio data from the video and normalize it out.
+* Output audio data from the movie and normalize it out.
 * gmv.py creates a dedicated file containing images and audio.
 
 #### Parameters of FFmpeg
 ```sh
 ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 ```
-You can change the output quality, filters, etc. to your liking. The best parameters depend on the source video, so please refer to FFmpeg's information.
+You can change the output quality, filters, etc. to your liking. The best parameters depend on the source movie, so please refer to FFmpeg's information.
 
 ### Data restrictions
+* Movie formats that can be converted  
+Formats that FFMpeg cannot handle are not supported.
+
 * wav data quality (8KHz unsigned 8bit mono)  
 The quality of the audio data is lowered to reduce the processing load.  
 Scripts can be edited to improve quality, but processing delays may occur due to processing load. (See Known Issues)
 
 * Image size and frame rate  
-When converting a video to JPEG, the width is 320px and the height is a value that maintains the aspect ratio.  
+When converting a movie to JPEG, the width is 320px and the height is a value that maintains the aspect ratio.  
 <ins>Currently, 320 x 240 can be played back at about 24 FPS, and 320 x 180 at about 30 FPS.</ins>  
 To change the image size, edit the parameter for FFmpeg in conv.sh. **(scale=)**
 
@@ -136,13 +139,13 @@ https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
 #### Workaround by the data
 * Reduce playback frame rate
 ```sh
-bash conv.sh video.mp4 30 # 30 FPS
-bash conv.sh video.mp4 24 # Reduce to 24
+bash conv.sh movie.mp4 30 # 30 FPS
+bash conv.sh movie.mp4 24 # Reduce to 24
 ```
 * Reduce JPEG file size 
 ```sh
-bash conv.sh video.mp4 30      # 7168 as default
-bash conv.sh video.mp4 30 5120 # Reduce to 5120
+bash conv.sh movie.mp4 30      # 7168 as default
+bash conv.sh movie.mp4 30 5120 # Reduce to 5120
 ```
 * Reduce image size
 ```sh
