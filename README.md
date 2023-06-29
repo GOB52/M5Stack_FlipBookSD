@@ -68,13 +68,13 @@ SINTEL (Trailer)
 1. 任意に作ったデータ作成用ディレクトリに動画データをコピーする
 1. 同ディレクトリに [conv.sh](script/conv.sh) と [gmv.py](script/gmv.py) をコピーする
 1. シェルスクリプトを次のように指定して実行する。  
-**bash conv.sh move_file_path frame_rate [ jpeg_maxumum_size (無指定時は 7168) ]**
+**bash conv.sh movie_file_path frame_rate [ jpeg_maxumum_size (無指定時は 7168) ]**
 
 |引数|必須?|説明|
 |---|---|---|
-|move_file_path|YES|元となる動画|
-|frame_rate|YES|出力されるデータの FPS (1.0 - 30.0)<br>整数または小数を指定可能|
-|jpeg_maximum_size|NO|JPEG 1枚あたりの最大ファイルサイズ( 1024 - 10240)<br>大きいと品質が維持されるが処理遅延が発生する可能性が高くなる(既知の問題参照)|
+|movie\_file_path|YES|元となる動画|
+|frame\_rate|YES|出力されるデータの FPS (1.0 - 30.0)<br>整数または小数を指定可能|
+|jpeg\_maximum\_size|NO|JPEG 1枚あたりの最大ファイルサイズ( 1024 - 10240)<br>大きいと品質が維持されるが処理遅延が発生する可能性が高くなる(既知の問題参照)|
 
 4. 動画ファイル名.gmv が出力される。
 5. gmv ファイルを SD カードの **/gcf** にコピーする。

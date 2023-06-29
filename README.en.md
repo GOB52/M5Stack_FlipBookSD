@@ -70,13 +70,13 @@ Video data can be in any format that can be processed by FFmpeg.
 1. Copy video data to an arbitrarily created directory.
 1. Copy [conv.sh](script/conv.sh) and [gmv.py](script/gmv.py) to the same directory.
 1. Execute the shell script as follows  
-**bash conv.sh move_file_name frame_rate [ jpeg_maxumum_size (Default if not specified is 7168) ]**
+**bash conv.sh movie_file_name frame_rate [ jpeg_maxumum_size (Default if not specified is 7168) ]**
 
 | Argument | Required?| Description |
 |---|---|---|
-|move_file_path|YES|Source movie|
-|frame_rate|YES|Output frame rate (1.0 - 30.0)<br>**Integer or decimal numbers can be specified**|
-|jpeg_maximum_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger sizes preserve quality but are more likely to cause processing delays (see "Known Issues").|
+|movie\_file_path|YES|Source movie|
+|frame\_rate|YES|Output frame rate (1.0 - 30.0)<br>**Integer or decimal numbers can be specified**|
+|jpeg\_maximum\_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger sizes preserve quality but are more likely to cause processing delays (see "Known Issues").|
 
 4. The files that named "videofilename.gmv" output to same directory.
 5. Copy the above files to **/gcf** on the SD card.
