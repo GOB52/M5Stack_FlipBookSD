@@ -104,6 +104,9 @@ ffmpeg -i $1 -r $2 -vf scale=320:-1,dejudder -qmin 1 -q 1 jpg$$/%06d.jpg
 出力品質や、フィルター等、変更することでお好みのものにできます。元となる動画によって最適なパラメータは異なるので、FFmpeg の情報を参考にして行ってください。
 
 ### データの制限
+* 変換可能な動画フォーマット  
+FFMpeg が扱う事ができないフォーマットはサポートされません。
+
 * wav データの品質 (8KHz 符号なし 8bit mono)  
 処理負荷軽減の為、音声データの品質は下げています。  
 スクリプトを編集して品質を上げることは可能ですが、処理負荷によって処理遅延が生じるかもしれません。(既知の問題参照)
@@ -141,13 +144,13 @@ https://github.com/greiman/SdFat/issues/96#issuecomment-377332392
 #### データでの回避策
 * 再生フレームレートを減らす
 ```sh
-bash conv.sh video.mp4 30 # 30 FPS
-bash conv.sh video.mp4 24 # Reduce to 24
+bash conv.sh movie.mp4 30 # 30 FPS
+bash conv.sh movie.mp4 24 # Reduce to 24
 ```
 * JPEG ファイルサイズを小さくする 
 ```sh
-bash conv.sh video.mp4 30      # 7168 as default
-bash conv.sh video.mp4 30 5120 # Reduce to 5120
+bash conv.sh movie.mp4 30      # 7168 as default
+bash conv.sh movie.mp4 30 5120 # Reduce to 5120
 ```
 * 画像サイズを小さくする
 ```sh
