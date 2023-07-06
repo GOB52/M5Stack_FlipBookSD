@@ -13,10 +13,9 @@ class FileList
     FileList();
 
     uint32_t make(const char* base, const char* ext = "gcf");
-    uint32_t append(const char* ext = "gcf");
     
     inline int32_t current() const { return _cur; }
-    inline int32_t files() const { return _files; }
+    inline int32_t files() const { return _list.size(); }
 
     String getCurrent() const { return _cur < _list.size() ? _list[_cur] : String(""); }
     String getCurrentFullpath() const
@@ -45,7 +44,6 @@ class FileList
     String _base{"/"};
     std::vector<String> _list{};
     int32_t _cur{};
-    int32_t _files{};
     bool _shuffle{};
 };
 #endif

@@ -97,9 +97,10 @@ void sleepUntil(const std::chrono::time_point<ESP32Clock, UpdateDuration>& absTi
 auto& display = M5.Display;
 SdFs sd;
 
-uint8_t volume{72}; // 0~255
+uint8_t volume{}; // 0~255
 uint32_t currentFrame{}, maxFrames{};
 uint32_t loadCycle{}, drawCycle{}, wavCycle{};
+uint32_t loadCycleTotal{}, drawCycleTotal{}, wavCycleTotal{};
 bool primaryDisplay{};
 
 MainClass mainClass;
@@ -197,6 +198,7 @@ static bool playMovie(const String& path, const bool bus = true)
 {
     M5.Speaker.stop();
     wavTotal = currentFrame = maxFrames = 0;
+    loadCycleTotal = wavCycleTotal = drawCycleTotal = 0;
     clearFpsQueue();
     
     if(gmv) { gmv.close(); }
@@ -278,9 +280,7 @@ void setup()
     M5.Speaker.config(spk_cfg);
 
     M5_LOGI("Output to %s", primaryDisplay ? "Display" : "Lcd");
-    if(M5.getBoard() == m5::board_t::board_M5Stack) { volume = 144; }
-    if(primaryDisplay) { volume = 128; }
-    M5.Speaker.setVolume(volume);
+    volume = M5.Speaker.getVolume();
     
 #if defined(FBSD_ENABLE_SD_UPDATER)
     // SD-Updater
@@ -308,8 +308,12 @@ void setup()
     M5.BtnC.setHoldThresh(500);
     unfiedButton.begin(&display);
 
-    // file list
-    list.make("/gcf", "gmv");
+    // file list (Search "/gcf" if "/gmv" is empty or not exists.)
+    if(list.make("/gmv", "gmv") == 0)
+    {
+        M5_LOGI("Research directory gcf");
+        list.make("/gcf", "gmv");
+    }
     
     // Allocate buffer
     for(auto& buf : buffers)
@@ -403,15 +407,9 @@ static void changeToMenu()
 // Render to lcd directly with DMA
 static void loopRender()
 {
-    static int32_t showVolume{};
     static float afps{};
 
 #if defined(DEBUG)
-    if(showVolume-- >= 0)
-    {
-        display.fillRect(0, 0, display.width(), 4, TFT_BLACK);
-        if(showVolume >0) { display.fillRect(0, 0, display.width() * (volume / 255.0f), 4, TFT_BLUE); }
-    }
     display.setCursor(0, 4);
     display.printf("F:%2.2f C:%u", afps, currentFrame);
 #endif
@@ -423,8 +421,8 @@ static void loopRender()
     display.endWrite();
 
     // Change volume
-    if(M5.BtnA.isPressed()) { if(volume >   0) { M5.Speaker.setVolume(--volume); showVolume = BASE_FPS;} }
-    if(M5.BtnC.isPressed()) { if(volume < 255) { M5.Speaker.setVolume(++volume); showVolume = BASE_FPS;} }
+    if(M5.BtnA.isPressed()) { if(volume >   0) { M5.Speaker.setVolume(--volume); }}
+    if(M5.BtnC.isPressed()) { if(volume < 255) { M5.Speaker.setVolume(++volume); }}
     // Stop
     if(M5.BtnB.wasClicked()) { changeToMenu(); return; }
 
@@ -435,6 +433,7 @@ static void loopRender()
         {
         case PlayType::RepeatAll:
         case PlayType::Shuffle:
+            M5_LOGD("Total: %u / %u / %u", loadCycleTotal, wavCycleTotal, drawCycleTotal);
             M5_LOGI("To next file");
             list.next();
             // fallthrough
@@ -473,7 +472,7 @@ static void loopRender()
             M5.Speaker.playRaw(buf, wavSize, wh.sample_rate, wh.channel >= 2, 1, 0);
         }
         wavTotal += wavSize;
-        M5_LOGD("outIdx:%u jsz:%u wsz:%u/%u", outIndex, jpegSize, wavSize, wavTotal);
+        M5_LOGV("outIdx:%u jsz:%u wsz:%u/%u", outIndex, jpegSize, wavSize, wavTotal);
     }
 
     auto now = ESP32Clock::now();
@@ -482,7 +481,11 @@ static void loopRender()
     fps = BASE_FPS / std::chrono::duration_cast<UpdateDuration>(delta).count();
     pushFpsQueue(fps);
     afps = averageFps();
-    M5_LOGD("%5d/%5d %2.2f/%2.2f %u/%u/%u", currentFrame, maxFrames, fps, afps, loadCycle, wavCycle, drawCycle);
+    uint32_t addCycle = loadCycle + wavCycle + drawCycle;
+    loadCycleTotal += loadCycle;
+    wavCycleTotal += wavCycle;
+    drawCycleTotal += drawCycle;
+    M5_LOGD("%5d/%5d %2.2f/%2.2f %u/%u/%u [%u]", currentFrame, maxFrames, fps, afps, loadCycle, wavCycle, drawCycle, addCycle);
 }
 
 //
