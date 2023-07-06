@@ -17,7 +17,6 @@ This application playback streams movie files that converted to the dedicated fo
 It uses multi-cores to perform rendering with DMA and audio playback.  
 ***The old format gcf + wav is no longer playable since 0.1.1. Please regenerate it in gmv format or convert it using the gcf + wav => gmv conversion script.***
 
-
 ## Target devices
 It must be able to run the libraries it depends on and have an SD card.
 * M5Stack Basic 2.6 or later
@@ -52,7 +51,10 @@ It must be able to run the libraries it depends on and have an SD card.
 |S3\_release_DisplayModule| Support DisplayModule |
 
 ### Sample data for playback
-Download [sample_0_1_1.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11871296/sample_0_1_1.zip), unzip it and copy to **/gcf** on your SD card.
+Download [sample_0_1_1.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11871296/sample_0_1_1.zip), unzip it and copy to **/gmv** on your SD card.
+
+
+
 
 ## How to make data
 ### Required tools 
@@ -79,17 +81,17 @@ Movie data can be in any format that can be processed by FFmpeg.
 |jpeg\_maximum\_size|NO|Maximum file size of one image to output (1024 - 10240)<BR>Larger sizes preserve quality but are more likely to cause processing delays (see "Known Issues").|
 
 4. The files that named "movie\_file\_name.gmv" output to same directory.
-5. Copy the above files to **/gcf** on the SD card.
+5. Copy the above files to **/gmv** on the SD card.
 
 e.g.)
 ```sh
 mkdir foo
 cp bar.mp4 foo
 cp script/conv.sh foo
-cp script/gcf.py foo
+cp script/gmv.py foo
 cd foo
 bash conv.sh bar.mp4 29.97
-cp bar.gmv your_sd_card_path/gcf
+cp bar.gmv your_sd_card_path/gmv
 ```
 
 ### Processes performed by shell scripts
@@ -120,6 +122,10 @@ To change the image size, edit the parameter for FFmpeg in conv.sh. **(scale=)**
 
 * Image size and output device size  
 If the image size is narrower or wider than the output device size, it will be centered.
+
+### Movie data search
+Searches for files in **/gmv**. If it does not exist, the old version **/gcf** is searched.  
+If both exist, only /gmv is searched.
 
 ## Known issues
 ### Audio is choppy or playback speed is slow.
