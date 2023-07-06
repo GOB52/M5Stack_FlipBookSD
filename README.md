@@ -51,7 +51,7 @@ SINTEL (Trailer)
 |S3\_release_DisplayModule| ディスプレイモジュール 対応|
 
 ### 再生用サンプルデータ
-[sample_0_1_1.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11871296/sample_0_1_1.zip) をダウンロードして解凍し、 SD カードの **/gcf** へコピーしてください。
+[sample_0_1_1.zip](https://github.com/GOB52/M5Stack_FlipBookSD/files/11871296/sample_0_1_1.zip) をダウンロードして解凍し、 SD カードの **/gmv** へコピーしてください。
 
 ## データの作成方法
 ### 必要なもの
@@ -77,17 +77,17 @@ SINTEL (Trailer)
 |jpeg\_maximum\_size|NO|JPEG 1枚あたりの最大ファイルサイズ( 1024 - 10240)<br>大きいと品質が維持されるが処理遅延が発生する可能性が高くなる(既知の問題参照)|
 
 4. 動画ファイル名.gmv が出力される。
-5. gmv ファイルを SD カードの **/gcf** にコピーする。
+5. gmv ファイルを SD カードの **/gmv** にコピーする。
 
 例)
 ```sh
 mkdir foo
 cp bar.mp4 foo
 cp script/conv.sh foo
-cp script/gcf.py foo
+cp script/gmv.py foo
 cd foo
 bash conv.sh bar.mp4 29.97
-cp bar.gmv your_sd_card_path/gcf
+cp bar.gmv your_sd_card_path/gmv
 ```
 
 ### シェルスクリプトで行っている事
@@ -118,6 +118,11 @@ FFMpeg が扱う事ができないフォーマットはサポートされませ�
 
 * 画像サイズと出力先サイズ  
 画像データが出力先サイズに満たない、または逸脱する場合は、センタリングして表示されます。
+
+### データの検索
+**/gmv** 内のファイルを探索します。もし存在しない場合は旧版の **/gcf** 内を検索します。  
+両方存在する場合は /gmv のみ対象となります。
+
 
 ## 既知の問題
 ### 音声が途切れる、再生速度が遅い
@@ -187,7 +192,7 @@ cp script/gcf_to_gmv.py gcf_dir
 cp script/convert_gcf_to_gmv.sh gcf_dir
 cd gcf_dir
 bash convert_gcf_to_gmv.sh
-cp *.gmv your_sd_card_path/gcf
+cp *.gmv your_sd_card_path/gmv
 ```
 
 ## 余談
