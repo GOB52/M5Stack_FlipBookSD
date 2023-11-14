@@ -110,7 +110,7 @@ gob::GMVFile gmv{};
 uint8_t* buffers[NUMBER_OF_BUFFERS]; // For 1 of JPEG and wav block
 uint32_t bufferIndex{}, outIndex{}, jpegSize{}, wavSize{}, wavTotal{};
 
-gob::UnifiedButton unfiedButton;
+goblib::UnifiedButton unfiedButton;
 
 enum class PlayType : int8_t { Single, RepeatSingle, RepeatAll, Shuffle };
 PlayType& operator++(PlayType& pt)
@@ -349,7 +349,7 @@ static void loopMenu()
         if(playMovie(list.getCurrentFullpath()))
         {
             loop_f = loopRender;
-            unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::transparent_all);
+            unfiedButton.changeAppearance(goblib::UnifiedButton::appearance_t::transparent_all);
             lastTime = ESP32Clock::now();
             return;
         }
@@ -395,7 +395,7 @@ static void changeToMenu()
 {
     M5.Speaker.stop();
     loop_f = loopMenu;
-    unfiedButton.changeAppearance(gob::UnifiedButton::appearance_t::bottom);
+    unfiedButton.changeAppearance(goblib::UnifiedButton::appearance_t::bottom);
     display.clear(0);
 
 }
@@ -488,8 +488,8 @@ static void loopRender()
 //
 void loop()
 {
-    unfiedButton.update();
     M5.update();
+    unfiedButton.update();
     loop_f();
 }
 
