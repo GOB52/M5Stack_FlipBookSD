@@ -111,7 +111,7 @@ gob::GMVFile gmv{};
 uint8_t* buffers[NUMBER_OF_BUFFERS]; // For 1 of JPEG and wav block
 uint32_t bufferIndex{}, outIndex{}, jpegSize{}, wavSize{}, wavTotal{};
 
-goblib::UnifiedButton unfiedButton;
+goblib::UnifiedButton unifiedButton;
 
 enum class PlayType : int8_t { Single, RepeatSingle, RepeatAll, Shuffle };
 PlayType& operator++(PlayType& pt)
@@ -306,7 +306,7 @@ void setup()
     M5.BtnA.setHoldThresh(500);
     M5.BtnB.setHoldThresh(500);
     M5.BtnC.setHoldThresh(500);
-    unfiedButton.begin(&display);
+    unifiedButton.begin(&display);
 
     // file list (Search "/gcf" if "/gmv" is empty or not exists.)
     if(list.make("/gmv", "gmv") == 0)
@@ -353,7 +353,7 @@ static void loopMenu()
         if(playMovie(list.getCurrentFullpath()))
         {
             loop_f = loopRender;
-            unfiedButton.changeAppearance(goblib::UnifiedButton::appearance_t::transparent_all);
+            unifiedButton.changeAppearance(goblib::UnifiedButton::appearance_t::transparent_all);
             lastTime = ESP32Clock::now();
             return;
         }
@@ -392,14 +392,14 @@ static void loopMenu()
     display.drawString(str, display.width()/2, display.height()/2 + 16);
     display.drawString(ptTable[(int8_t)playType], display.width()/2, display.height()/2 + 48);
 
-    unfiedButton.draw(dirty);
+    unifiedButton.draw(dirty);
 }
 
 static void changeToMenu()
 {
     M5.Speaker.stop();
     loop_f = loopMenu;
-    unfiedButton.changeAppearance(goblib::UnifiedButton::appearance_t::bottom);
+    unifiedButton.changeAppearance(goblib::UnifiedButton::appearance_t::bottom);
     display.clear(0);
 
 }
@@ -492,7 +492,7 @@ static void loopRender()
 void loop()
 {
     M5.update();
-    unfiedButton.update();
+    unifiedButton.update();
     loop_f();
 }
 
