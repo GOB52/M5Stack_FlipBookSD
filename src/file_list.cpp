@@ -27,7 +27,7 @@ uint32_t FileList::make(const char* base, const char* ext)
     _base = base;
     _cur = 0;
     _list.clear();
-
+    
     M5_LOGI("base dir:[%s]", base);
         
     FsFile dir;
@@ -44,36 +44,10 @@ uint32_t FileList::make(const char* base, const char* ext)
 
         M5_LOGD("list:[%s]", path);
         _list.emplace_back(path);
-        ++_files;
         f.close();
     }
     sort();
-    return _files;
-}
-
-uint32_t FileList::append(const char* ext)
-{
-    auto psize = _files;
-
-    FsFile dir;
-    if(!dir.open(_base.c_str())) { return 0; }
-
-    FsFile f;
-    while(f.openNext(&dir, O_RDONLY))
-    {
-        if(f.isDir()) { continue; }
-
-        char path[256];
-        f.getName(path, sizeof(path));
-        if(path[0] == '.' || getExt(path) != ext) { continue; }
-
-        M5_LOGD("list:[%s]", path);
-        _list.emplace_back(path);
-        ++_files;
-        f.close();
-    }
-    sort();
-    return _files - psize;
+    return _list.size();
 }
 
 void FileList::shuffle()
